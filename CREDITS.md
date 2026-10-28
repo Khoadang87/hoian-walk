@@ -117,3 +117,7 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 
 ## Experimental `?crowd=1` (not default)
 - The 6 people shown while standing still with `?crowd=1` are **AI-generated and made up** (images with GenerateImage, animated with Grok Imagine image-to-video, keyed from green with a custom matte script). They are not real people and were not filmed in Hội An.
+
+## Clean plates (`?crowd=1` only)
+`assets/plates/p*.jpg` are frames from the walk video with real people, bicycles and scooters removed automatically: YOLO11m-seg (Ultralytics, AGPL-3.0) masks + big-LaMa inpainting (Apache-2.0). The filled-in areas are machine-generated and can contain smudges or invented detail.
+The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image → image-to-video → keyed); none are real people.

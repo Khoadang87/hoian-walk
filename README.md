@@ -109,3 +109,6 @@ Run the tests: `npm i && npx playwright install chromium && node scripts/test.mj
 - Releasing the joystick now **stops**: the footage pauses on the current frame and the street sound fades out and pauses (no loop/replay). It resumes in sync when you walk. `?idle=0.4` restores the old slow forward drift.
 - All buttons/badges are hidden in the walk scene; only the joystick, drag/gyro look, a short hint and (if needed) a small "Tap to start" pill remain. Turn around = pull the stick down (or S/↓).
 - Hooks for custom buttons: `HoianWalk.setWalk(true|null)`, `HoianWalk.turnAround()`, `HoianWalk.faceAhead()`, `HoianWalk.state()`.
+
+### `?crowd=1` v2 (clean plates, experimental)
+When you stop, the frozen frame snaps to the nearest precomputed clean plate (every 2 s along the route), real people/scooters are inpainted out, and AI-generated people appear at stall/curb spots; walkers enter from outside the view. Walking again fades the plate out. Plates: `assets/plates/` + `plates.json`. Not on by default.

@@ -21,7 +21,7 @@ const geo = new THREE.SphereGeometry(50, 128, 64); geo.scale(-1, 1, 1);
 const mat = new THREE.MeshBasicMaterial({ color: 0xffffff }); const sphere = new THREE.Mesh(geo, mat); sphere.rotation.y = +(params.get("ry") ?? -Math.PI / 2); scene.add(sphere);
 function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.muted = true; v.defaultMuted = true; v.preload = 'auto'; v.loop = false;
   v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v); return v; }
-let crowd = null; if (params.get('crowd') === '1') import('./crowd.js').then(m => { crowd = m.initCrowd(THREE, scene, camera, () => !!view.standing); window.__crowd = crowd; }); /* experimental: generated people while standing */
+let crowd = null; if (params.get('crowd') === '1') import('./crowd.js').then(m => m.initCrowd(THREE, { scene, camera, sphere, geo, isStanding: () => !!view.standing, pos: () => pos(), snapTo })).then(c => { crowd = c; window.__crowd = c; }).catch(e => console.warn('crowd', e)); /* experimental: clean plate + generated people while standing */ /* experimental: generated people while standing */
 const audio = document.createElement('audio'); audio.loop = true; audio.preload = 'auto'; document.body.appendChild(audio);
 /* Ambience = the real street sound of the same source (15:00 onward; the route starts at 15:45). One gain controller does all fades; WebAudio gain is used where available because iOS ignores audio.volume. */
 const AVOL = 0.85, AOFF = 45; const aud = { g: 0, goal: 0, res: false, node: null };
@@ -60,6 +60,7 @@ let fwdT, revT, active;
 const pos = () => active === fwdT ? fwdT.tpos : D - revT.tpos; // seconds along the route
 function setSpin(on) { $('spin').hidden = !on; }
 async function playSafe(v) { try { return await Promise.race([v.play().then(() => true), new Promise(r => setTimeout(() => r(!v.paused), 1500))]); } catch (e) { return false; } }
+async function snapTo(p) { if (swapping || !active) return; swapping = true; try { await active.seek(active === fwdT ? p : D - p); active.el.pause(); if (active.el.readyState >= 2) { mat.map = active.tex[active.k]; mat.needsUpdate = true; } } finally { swapping = false; } }
 async function switchTo(tr) { if (swapping || tr === active) return; swapping = true; const p = pos();
   await tr.seek(tr === fwdT ? p : D - p); tr.el.playbackRate = Math.max(0.0625, Math.abs(rate)); await playSafe(tr.el); if (tr.el.readyState >= 2) { mat.map = tr.tex[tr.k]; mat.needsUpdate = true; }
   active.pauseAll(); active = tr; swapping = false; }
