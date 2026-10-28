@@ -90,3 +90,7 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 - **Everything else** (shophouses, roofs, shutters, signs, lanterns, trees, palms, umbrellas, boats, river, scooters, bicycles, all textures) is generated procedurally in `game.js` for this project. No third-party art.
 - **Engine:** three.js r186 (MIT) incl. addons GLTFLoader, SkeletonUtils, BufferGeometryUtils and meshoptimizer decoder (MIT), vendored under `vendor/`.
 - The layout is loosely modelled on Bạch Đằng street along the Thu Bồn river in Hội An; it is not a survey-accurate reconstruction.
+
+## Default scene: Hội An 360° real spots (presence.js)
+- Footage: "Hoi An in 8K VR | Serene 360° Views of Vietnam's Ancient Riverside Town" by **VRoam With Me** (YouTube jFmx6PDZYNc, Insta360 X4). Six stationary tripod shots cut out, with the original sound: plaza 35.5–161 s, lane 162.5–311 s, boats 353.5–462 s, palms 463.5–612 s, steps 613.5–762 s, hall 763.5–913 s. Re-encoded to H.264 1920×960 (HD) and 1280×640 (SD) at the native 30 fps. Only a 1920×1080 copy could be fetched (YouTube blocked higher-res requests from this server), so this is softer than the 8K original.
+- Generated content: **none**. Transitions between spots are a rendered zoom/blur crossfade, not footage. The order of the spots is a plausible riverside route; the footage has no GPS, so the arrow directions are approximate.

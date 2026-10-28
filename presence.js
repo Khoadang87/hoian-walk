@@ -31,7 +31,7 @@ const sA = new THREE.Mesh(sphGeo, mkMat()), sB = new THREE.Mesh(sphGeo, mkMat())
 const arrowGeo = (() => { const s = new THREE.Shape(); s.moveTo(0, 0.55); s.lineTo(0.45, 0); s.lineTo(0.2, 0); s.lineTo(0.2, -0.45); s.lineTo(-0.2, -0.45); s.lineTo(-0.2, 0); s.lineTo(-0.45, 0); s.closePath(); const g = new THREE.ShapeGeometry(s); g.rotateX(-Math.PI / 2); return g; })();
 const arrows = new THREE.Group(); scene.add(arrows);
 function makeArrow(yaw, to, label) { const m = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthTest: false }));
-  const g = new THREE.Group(); g.add(m); m.position.set(0, -1.55, -2.4); m.rotation.y = 0; g.rotation.y = yaw; g.userData = { to, label }; m.userData.to = to; m.renderOrder = 5;
+  const g = new THREE.Group(); g.add(m); m.position.set(0, -1.55, -3.4); m.rotation.y = 0; g.rotation.y = yaw; g.userData = { to, label }; m.userData.to = to; m.renderOrder = 5;
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.7, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthTest: false })); ring.position.copy(m.position); ring.renderOrder = 4; g.add(ring);
   arrows.add(g); return g; }
 

@@ -1,0 +1,117 @@
+{
+ "source": "VRoam With Me, 'Hoi An in 8K VR' YouTube jFmx6PDZYNc (fetched at 1920x1080 max)",
+ "spots": [
+  {
+   "id": "plaza",
+   "name": "Banyan-tree plaza by the river",
+   "yaw0": 0,
+   "poster": "plaza.jpg",
+   "files": {
+    "hi": "plaza_hd.mp4",
+    "lo": "plaza_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 0,
+     "to": 1
+    }
+   ]
+  },
+  {
+   "id": "lane",
+   "name": "Yellow-walled lane with lanterns",
+   "yaw0": 0,
+   "poster": "lane.jpg",
+   "files": {
+    "hi": "lane_hd.mp4",
+    "lo": "lane_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 0,
+     "to": 2
+    },
+    {
+     "yaw": 3.14159,
+     "to": 0
+    }
+   ]
+  },
+  {
+   "id": "boats",
+   "name": "Thu Bồn riverbank, sampan boats",
+   "yaw0": 0,
+   "poster": "boats.jpg",
+   "files": {
+    "hi": "boats_hd.mp4",
+    "lo": "boats_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 0,
+     "to": 3
+    },
+    {
+     "yaw": 3.14159,
+     "to": 1
+    }
+   ]
+  },
+  {
+   "id": "palms",
+   "name": "Riverside promenade, palms",
+   "yaw0": 0,
+   "poster": "palms.jpg",
+   "files": {
+    "hi": "palms_hd.mp4",
+    "lo": "palms_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 0,
+     "to": 4
+    },
+    {
+     "yaw": 3.14159,
+     "to": 2
+    }
+   ]
+  },
+  {
+   "id": "steps",
+   "name": "River steps and boats",
+   "yaw0": 0,
+   "poster": "steps.jpg",
+   "files": {
+    "hi": "steps_hd.mp4",
+    "lo": "steps_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 0,
+     "to": 5
+    },
+    {
+     "yaw": 3.14159,
+     "to": 3
+    }
+   ]
+  },
+  {
+   "id": "hall",
+   "name": "Inside an assembly hall",
+   "yaw0": 0,
+   "poster": "hall.jpg",
+   "files": {
+    "hi": "hall_hd.mp4",
+    "lo": "hall_sd.mp4"
+   },
+   "links": [
+    {
+     "yaw": 3.14159,
+     "to": 4
+    }
+   ]
+  }
+ ]
+}
