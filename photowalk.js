@@ -43,8 +43,12 @@ export class PhotoWalk {
     this.compScene = new THREE.Scene(); this.compScene.add(this.comp); this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
   async fetchBitmap(url, i, report, acc) {
-    let res; try { res = await fetch(url); } catch (e) { throw new Error(`Network/CORS error loading street view ${i}: ${url}\n(${e.message})`); }
-    if (!res.ok) throw new Error(`Street view ${i} failed: HTTP ${res.status} (${url}).`);
+    let res, err;
+    for (let attempt = 0; attempt < 4; attempt++) { // retry transient CDN errors (e.g. 503 right after a deploy)
+      if (attempt) await new Promise(r => setTimeout(r, 800 * 2 ** attempt));
+      try { res = await fetch(url); if (res.ok) { err = null; break; } err = new Error(`Street view ${i} failed: HTTP ${res.status} (${url}).`); }
+      catch (e) { err = new Error(`Network/CORS error loading street view ${i}: ${url}\n(${e.message})`); } }
+    if (err) throw err;
     const total = +res.headers.get('content-length') || 0; acc.total += total; const rd = res.body.getReader(); const parts = [];
     for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); acc.got += value.length; if (report) this.onProgress?.(acc.got, acc.total, i); }
     return createImageBitmap(new Blob(parts), { imageOrientation: 'none', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });

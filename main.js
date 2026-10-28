@@ -195,7 +195,7 @@ renderer.setAnimationLoop(() => {
     const ni = walk.update(pos.z);
     $('sfill').style.width = (100 * pos.z / BOUNDS.maxZ).toFixed(1) + '%';
     $('slabel').textContent = `${pos.z.toFixed(1)} m / ${BOUNDS.maxZ.toFixed(0)} m · view ${ni + 1}/${walk.nodes.length}` + (walk.loadingNeeded ? ' · loading…' : '');
-    window.__state.node = ni;
+    window.__state.node = ni; if (!walk.loadingNeeded && $('nodestatus').textContent) $('nodestatus').textContent = '';
   }
   applyCamera();
   if (walk?.render) walk.render(renderer, camera); else renderer.render(scene, camera);
