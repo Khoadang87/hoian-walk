@@ -118,4 +118,4 @@ function enableGyro() { const on = () => addEventListener('deviceorientation', e
     const now = performance.now(); stalls = stalls.filter(t => now - t < 15000); if (stalls.length >= 3 && quality === 'hi' && !busy) { stalls = []; quality = 'lo'; $('quality').textContent = 'Quality: SD (auto)'; const v = vids[front], t = v.currentTime; const s = cur; cur = -1; go(s).then(() => { vids[front].currentTime = t; }); }
     renderer.render(scene, camera); });
 })();
-window.__test = { setYaw: y => view.yaw = y, go: i => go(i), state: () => ({ spot: cur, t: vids[front].currentTime, dur: vids[front].duration, paused: vids[front].paused, q: quality, w: vids[front].videoWidth, loops: window.__state.loops || 0 }) };
+window.__test = { seek: t => { vids[front].currentTime = t; }, setYaw: y => view.yaw = y, go: i => go(i), state: () => ({ spot: cur, t: vids[front].currentTime, dur: vids[front].duration, paused: vids[front].paused, q: quality, w: vids[front].videoWidth, loops: window.__state.loops || 0 }) };
