@@ -15,7 +15,8 @@ const IDLE = +(params.get('idle') || 0) /* 0 = standing still pauses the footage
 
 const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); $('app').appendChild(renderer.domElement);
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+const fitCam = () => { camera.aspect = innerWidth / innerHeight; const a = camera.aspect, oldv = new URLSearchParams(location.search).get('lowmask') === '0'; camera.fov = oldv ? 75 : Math.min(a < 1 ? 70 : 75, 2 * Math.atan(Math.tan(82 * Math.PI / 360) / a) * 180 / Math.PI); camera.updateProjectionMatrix(); }; fitCam();
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); fitCam(); });
 const geo = new THREE.SphereGeometry(50, 128, 64); geo.scale(-1, 1, 1);
 // ground-plane proxy: the lower hemisphere is pushed onto a floor 1.6 m below the camera, so sideways sway gives real-looking parallax near your feet
 { const P = geo.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).normalize(); const r = v.y < -0.032 ? Math.min(50, 1.6 / -v.y) : 50; P.setXYZ(i, v.x * r, v.y * r, v.z * r); } P.needsUpdate = true; }
@@ -70,7 +71,8 @@ async function switchTo(tr) { if (swapping || tr === active) return; swapping = 
 // input
 const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyroYaw0: 0, lat: 0, latT: 0 };
 // nadir cap (w1): the source's camera-carrier/stitch area under the lens warps and flows like water while walking; cover it with a stable, soft ground-toned disc that fades out by ~48 deg below the horizon
-const PITCH_MIN = 0.75;
+const OLDV = params.get('lowmask') === '0', PORT = () => innerWidth < innerHeight; // w2: portrait = narrower vertical FOV, gaze ~7 deg up and a tighter look-down limit, so the smeared near road takes only the bottom of the screen (?lowmask=0 = old framing)
+const PMIN = () => OLDV ? 0.75 : PORT() ? 0.4 : 0.6, GUP = () => OLDV ? 0 : PORT() ? 0.12 : 0.07;
 const nadir = (() => { if (params.get('nadir') === '0') return null;
   const m = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, uniforms: { col: { value: new THREE.Color(0.32, 0.30, 0.29) } },
     vertexShader: 'varying vec3 vp; void main(){ vp = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -82,9 +84,9 @@ function nadirUpd(now) { if (!nadir) return; nadir.mesh.position.x = camera.posi
   if (now - nadir.last > 700) { nadir.last = now; const im = mat.map && mat.map.image; try { if (im && (im.videoWidth || im.width)) { nadir.cx.drawImage(im, 0, 0, 16, 8); const d = nadir.cx.getImageData(0, 6, 16, 1).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < 64; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } nadir.tgt.setRGB(r / 4080, gg / 4080, b / 4080, THREE.SRGBColorSpace); } } catch (_) {} }
   nadir.m.uniforms.col.value.lerp(nadir.tgt, 0.03); }
 let drag = null; const cv = renderer.domElement;
-cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; cv.setPointerCapture(e.pointerId); });
-cv.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const k = camera.fov / innerHeight * Math.PI / 180; view.yaw += (e.clientX - drag.x) * k; view.pitch = THREE.MathUtils.clamp(view.pitch + (e.clientY - drag.y) * k, -PITCH_MIN, 1.3); drag.x = e.clientX; drag.y = e.clientY; });
-cv.addEventListener('pointerup', () => drag = null);
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+cv.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const k = camera.fov / innerHeight * Math.PI / 180; view.yaw += (e.clientX - drag.x) * k; view.pitch = THREE.MathUtils.clamp(view.pitch + (e.clientY - drag.y) * k, -PMIN(), 1.3); drag.x = e.clientX; drag.y = e.clientY; });
+for (const n of ['pointerup', 'pointercancel']) cv.addEventListener(n, e => { if (drag && e.pointerId === drag.id) drag = null; }); // multi-touch: thumb on joystick + another finger dragging here to look
 const keys = {}; addEventListener('keydown', e => keys[e.code] = true); addEventListener('keyup', e => keys[e.code] = false);
 const joyEl = $('joy'), knob = $('knob'); let joy = { x: 0, y: 0, id: null }; const evc = { down: 0, move: 0, up: 0, cancel: 0, ts: 0 };
 for (const [k, n] of [['down', 'pointerdown'], ['move', 'pointermove'], ['up', 'pointerup'], ['cancel', 'pointercancel'], ['ts', 'touchstart']]) joyEl.addEventListener(n, () => evc[k]++, { passive: true });
@@ -92,10 +94,12 @@ joyEl.addEventListener('touchstart', e => e.preventDefault(), { passive: false }
 joyEl.addEventListener('pointerdown', e => { joy.id = e.pointerId; try { joyEl.setPointerCapture(e.pointerId); } catch (_) {} knob.style.transition = 'none'; e.stopPropagation(); });
 joyEl.addEventListener('pointermove', e => { if (e.pointerId !== joy.id) return; const r = joyEl.getBoundingClientRect(); const dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2, L = Math.hypot(dx, dy) || 1, m = Math.min(1, L / 50) / L; joy.x = dx * m; joy.y = dy * m; knob.style.transform = `translate(${joy.x * 35}px,${joy.y * 35}px)`; });
 const joyEnd = e => { if (e.pointerId === joy.id) { joy = { x: 0, y: 0, id: null }; knob.style.transition = ''; knob.style.transform = ''; } }; joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
-function enableGyro() { const on = () => addEventListener('deviceorientation', ev => { if (ev.alpha == null) return; const d = THREE.MathUtils.degToRad, o = d(screen.orientation?.angle || window.orientation || 0);
+let gyroWant = params.get('gyro') === '1', gyroAttached = false; // tilt-to-look is opt-in (?gyro=1 or HoianWalk.setGyro(true)); default look = drag with any finger outside the joystick
+function setGyro(on) { gyroWant = !!on; if (on) { if (!gyroAttached) enableGyro(); } else if (view.gyro) { const e = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); view.gyro = null; view.yaw = view.sy = e.y - view.turn; view.pitch = view.sp = THREE.MathUtils.clamp(e.x, -PMIN(), 1.3); } }
+function enableGyro() { gyroAttached = true; const on = () => addEventListener('deviceorientation', ev => { if (ev.alpha == null || !gyroWant) return; const d = THREE.MathUtils.degToRad, o = d(screen.orientation?.angle || window.orientation || 0);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(d(ev.beta), d(ev.alpha), -d(ev.gamma), 'YXZ')).multiply(new THREE.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -o));
     if (!view.gyro) { view.gyroYaw0 = view.yaw - new THREE.Euler().setFromQuaternion(q, 'YXZ').y; view.yaw = 0; view.pitch = 0; view.gyro = q; } else view.gyro.slerp(q, 0.35); });
-  if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().then(p => p === 'granted' && on()).catch(() => {}); else on(); }
+  if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().then(p => p === 'granted' ? on() : (gyroAttached = false)).catch(() => { gyroAttached = false; }); else on(); }
 // buttons: hold to walk forward/back (no scene switching)
 function hold(btn, val) { const set = v => e => { e.preventDefault(); e.stopPropagation(); btnTarget = v; }; btn.addEventListener('pointerdown', set(val)); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, set(null)); }
 let btnTarget = null;
@@ -133,7 +137,7 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     let gyroOn = false;
     const onGesture = () => { $('tapstart').hidden = true; if (active.el.paused && !active.atEnd() && !view.standing) playSafe(active.el);
       if (!soundOn) { soundOn = true; aInit(); aud.g = 0; aud.goal = AVOL; audio.currentTime = aWant(); audio.play().catch(() => { soundOn = false; }); }
-      if (!gyroOn && isMobile) { gyroOn = true; enableGyro(); } revT.seek(D - pos()).catch(() => {}); };
+      if (!gyroOn && isMobile && gyroWant && !gyroAttached) { gyroOn = true; enableGyro(); } revT.seek(D - pos()).catch(() => {}); };
     $('tapstart').onclick = onGesture; for (const ev of ['pointerup', 'touchend', 'keydown']) addEventListener(ev, () => { if (!soundOn || (active.el.paused && !active.atEnd())) onGesture(); }, true);
     if (!isMobile) setTimeout(() => revT.seek(D - pos()).catch(() => {}), 3000);
   } catch (e) { showError('The walk could not start: ' + e.message + '\nPlease reload. (Older version: ?scene=spots)'); return; }
@@ -166,9 +170,9 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
       else { const v = active.el; if (v.paused && !active.atEnd() && !swapping && !v._pp) { v._pp = 1; playSafe(v).finally(() => { v._pp = 0; }); } const pr = Math.max(isIOS ? 0.5 : 0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
         edgeStatus(); }
     }
-    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
+    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + GUP() + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
-    { const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); if (eu.x < -PITCH_MIN) { eu.x = -PITCH_MIN; camera.quaternion.setFromEuler(eu); } } // clamp final pitch (gyro included) so the stitched nadir never fills the screen
+    { const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); if (eu.x < -PMIN()) { eu.x = -PMIN(); camera.quaternion.setFromEuler(eu); } } // clamp final pitch (gyro included) so the stitched nadir never fills the screen
     nadirUpd(now);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
     const edge = pos() >= HI - 0.5 || pos() <= LO + 0.5, adv = now - lastAdv < 1500 || edge; $('live').textContent = adv ? (Math.abs(rate) > 0.5 && !edge ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
@@ -180,5 +184,5 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
 function showTap() { const t = $('tapstart'); t.textContent = '🔊 Tap to start'; t.hidden = false; }
 /* Public hooks for custom UI (buttons etc.). Example: HoianWalk.setWalk(true) while a button is held.
    setWalk(on|null): walk forward like the stick; turnAround(); faceAhead(); state() -> { pos, lo, hi, facing, standing, sound } */
-window.HoianWalk = { setWalk: on => { btnTarget = on ? 'walk' : null; }, turnAround: () => turnAround(), faceAhead: () => { view.yaw = 0; view.pitch = 0; }, state: () => ({ pos: pos(), lo: LO, hi: HI, facing: view.face > 0 ? 'forward' : 'back', standing: !!view.standing, sound: soundOn, rate, joy: joy.y, swapping, base: active ? (active === fwdT ? 'fwd' : 'rev') + ' rs' + active.el.readyState + (active.el.paused ? 'P' : '>') : '-' }) };
-window.__test = { nadir: () => nadir && nadir.m.uniforms.col.value.getHexString(), aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, setPitch: p => view.pitch = p, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
+window.HoianWalk = { setGyro: on => setGyro(on), gyro: () => gyroWant, setWalk: on => { btnTarget = on ? 'walk' : null; }, turnAround: () => turnAround(), faceAhead: () => { view.yaw = 0; view.pitch = 0; }, state: () => ({ pos: pos(), lo: LO, hi: HI, facing: view.face > 0 ? 'forward' : 'back', standing: !!view.standing, sound: soundOn, rate, joy: joy.y, swapping, base: active ? (active === fwdT ? 'fwd' : 'rev') + ' rs' + active.el.readyState + (active.el.paused ? 'P' : '>') : '-' }) };
+window.__test = { look: () => ({ yaw: view.yaw, pitch: view.pitch, gyro: !!view.gyro }), nadir: () => nadir && nadir.m.uniforms.col.value.getHexString(), aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, setPitch: p => view.pitch = p, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };

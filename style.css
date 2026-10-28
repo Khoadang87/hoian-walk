@@ -39,3 +39,6 @@ body.minimal #buttons, body.minimal #live, body.minimal #streetbar, body.minimal
 body.minimal #tapstart { inset: auto; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translateX(-50%); width: auto; height: auto; padding: 8px 14px; font-size: 14px; font-weight: 500; border-radius: 18px; background: #000a; }
 body.minimal #hint { top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 86vw; background: #0008; border-radius: 14px; padding: 6px 12px; font-size: 13px; }
 body.minimal #tapstart:not([hidden]) ~ #hint { top: calc(env(safe-area-inset-top, 0px) + 56px); }
+
+/* w2: the lowest band of the source footage (ground just ahead) shimmers like water while walking (stitch warp + compression in the source itself); soften it with a stable blur that fades in toward the bottom edge */
+#lowmask{position:fixed;left:0;right:0;bottom:0;height:16%;z-index:2;pointer-events:none;-webkit-backdrop-filter:blur(7px) saturate(.9);backdrop-filter:blur(7px) saturate(.9);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 70%);mask-image:linear-gradient(to bottom,transparent,#000 70%);background:linear-gradient(to bottom,#0000,#0003)}
