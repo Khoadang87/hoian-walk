@@ -143,3 +143,6 @@ Known artefacts:
 
 ### Removed (w6)
 The AI-generated motion at stops (`?gen`) and the `?crowd` test were removed; their files are only in git history. When you stop, the footage simply freezes.
+
+### `?road=2` test (w8)
+The same sharp asphalt plane as `?road=1`, but it is cut out wherever a person, bike, scooter or car is (precomputed 5 fps masks packed in two PNG atlases, not a video, so it stays frame-exact with the walk on iOS). Not default.

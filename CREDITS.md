@@ -137,3 +137,6 @@ The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image →
 
 ## Removed (w6)
 No AI-generated video is served any more; the earlier generated clips (`assets/gen`, `assets/crowd`) were deleted and exist only in git history.
+
+## `?road=2` test masks
+`assets/road/pm0.png`, `pm1.png` are person/bicycle/car/motorbike masks computed from the walk footage with YOLO11s-seg (Ultralytics, AGPL-3.0) at 5 fps, dilated and softened. They are used only to cut the asphalt overlay away from people; no pixels are generated.
