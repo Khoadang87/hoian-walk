@@ -114,3 +114,6 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
   - The ambience is re-synced to your position with a short fade.
 - **Previous versions** are still reachable: `?scene=spots` and `?scene=game` (the sections above).
 - Ambience audio now pauses while standing still (no looping).
+
+## Experimental `?crowd=1` (not default)
+- The 6 people shown while standing still with `?crowd=1` are **AI-generated and made up** (images with GenerateImage, animated with Grok Imagine image-to-video, keyed from green with a custom matte script). They are not real people and were not filmed in Hội An.
