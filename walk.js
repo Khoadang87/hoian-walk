@@ -72,7 +72,7 @@ async function switchTo(tr) { if (swapping || tr === active) return; swapping = 
 const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyroYaw0: 0, lat: 0, latT: 0 };
 // nadir cap (w1): the source's camera-carrier/stitch area under the lens warps and flows like water while walking; cover it with a stable, soft ground-toned disc that fades out by ~48 deg below the horizon
 const OLDV = params.get('lowmask') === '0', PORT = () => innerWidth < innerHeight; // w2: portrait = narrower vertical FOV, gaze ~7 deg up and a tighter look-down limit, so the smeared near road takes only the bottom of the screen (?lowmask=0 = old framing)
-const PMIN = () => OLDV ? 0.75 : PORT() ? 0.4 : 0.6, GUP = () => OLDV ? 0 : PORT() ? 0.12 : 0.07;
+const PMIN = () => OLDV ? 0.75 : PORT() ? 0.32 : 0.6, GUP = () => OLDV ? 0 : PORT() ? 0.15 : 0.07; // w7: a little less road in portrait (look-down limit 18 deg, gaze lift 8.6 deg)
 // w3 road: the near-field road in the source smears/flows like water (low-res stitched 360 + compression). Overlay a sharp, stable asphalt plane (texture cut from this same footage, made seamless), colour-matched live to the video's road, scrolled with walking so parallax is right; feathered into the video from ~13 deg below the horizon. ?road=0 disables.
 const road = (() => { if (params.get('road') !== '1') return null; // w4: off by default (it erased nearby people's legs); ?road=1 opt-in
   const tx = new THREE.TextureLoader().load('assets/road/asphalt.jpg?v=w3'); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
