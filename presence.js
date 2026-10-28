@@ -110,7 +110,7 @@ function enableGyro() { const on = () => addEventListener('deviceorientation', e
     const start = Math.max(0, spots.findIndex(s => s.id === params.get('spot'))); $('fill').style.width = '40%';
     await go(start); $('fill').style.width = '100%'; $('loader').hidden = true; window.__state.loaded = true;
     const tap = $('tapstart'); tap.textContent = '▶ Tap to be there (with sound)'; tap.hidden = false;
-    tap.onclick = async () => { tap.hidden = true; started = true; const v = vids[front]; v.muted = false; await v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); if (isMobile) enableGyro(); };
+    tap.onclick = async () => { tap.hidden = true; if (isMobile) $('badge').hidden = true; started = true; const v = vids[front]; v.muted = false; await v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); if (isMobile) enableGyro(); };
     if (params.get('autoplay')) tap.onclick();
   } catch (e) { showError('The 360° street could not start: ' + e.message + '\nReload, or try the 3D street: ?scene=game'); return; }
   renderer.setAnimationLoop(() => { setDir(); loopCheck(); arrows.rotation.y = 0;
