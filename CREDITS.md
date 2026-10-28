@@ -94,3 +94,8 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 ## Default scene: Hội An 360° real spots (presence.js)
 - Footage: "Hoi An in 8K VR | Serene 360° Views of Vietnam's Ancient Riverside Town" by **VRoam With Me** (YouTube jFmx6PDZYNc, Insta360 X4). Six stationary tripod shots cut out, with the original sound: plaza 35.5–161 s, lane 162.5–311 s, boats 353.5–462 s, palms 463.5–612 s, steps 613.5–762 s, hall 763.5–913 s. Re-encoded to H.264 1920×960 (HD) and 1280×640 (SD) at the native 30 fps. Only a 1920×1080 copy could be fetched (YouTube blocked higher-res requests from this server), so this is softer than the 8K original.
 - Generated content: **none**. Transitions between spots are a rendered zoom/blur crossfade, not footage. The order of the spots is a plausible riverside route; the footage has no GPS, so the arrow directions are approximate.
+
+## Continuous walk (default scene)
+- Footage and street audio: YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk). The route is 180 s, from 22:45 to 25:45 of the source. Ambience is taken from 15:00–25:40 of the same video.
+- All imagery and sound are real recordings. There is no generated or AI-filled content in this scene.
+- Encodes: 4K 3840x1920 H.264 (CRF 21), 2560x1280 H.264, and a reversed 2.5K copy for walking backward. All are split into 30 s chunks.

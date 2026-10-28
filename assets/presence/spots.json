@@ -7,7 +7,7 @@
    "yaw0": 0,
    "poster": "plaza.jpg",
    "files": {
-    "hi": "plaza_hd.mp4",
+    "hi": "plaza_sd.mp4",
     "lo": "plaza_sd.mp4"
    },
    "links": [
@@ -23,7 +23,7 @@
    "yaw0": 0,
    "poster": "lane.jpg",
    "files": {
-    "hi": "lane_hd.mp4",
+    "hi": "lane_sd.mp4",
     "lo": "lane_sd.mp4"
    },
    "links": [
@@ -43,7 +43,7 @@
    "yaw0": 0,
    "poster": "boats.jpg",
    "files": {
-    "hi": "boats_hd.mp4",
+    "hi": "boats_sd.mp4",
     "lo": "boats_sd.mp4"
    },
    "links": [
@@ -63,7 +63,7 @@
    "yaw0": 0,
    "poster": "palms.jpg",
    "files": {
-    "hi": "palms_hd.mp4",
+    "hi": "palms_sd.mp4",
     "lo": "palms_sd.mp4"
    },
    "links": [
@@ -83,7 +83,7 @@
    "yaw0": 0,
    "poster": "steps.jpg",
    "files": {
-    "hi": "steps_hd.mp4",
+    "hi": "steps_sd.mp4",
     "lo": "steps_sd.mp4"
    },
    "links": [
@@ -103,7 +103,7 @@
    "yaw0": 0,
    "poster": "hall.jpg",
    "files": {
-    "hi": "hall_hd.mp4",
+    "hi": "hall_sd.mp4",
     "lo": "hall_sd.mp4"
    },
    "links": [

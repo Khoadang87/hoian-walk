@@ -23,3 +23,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;font:14px system-
 @keyframes sp{to{transform:rotate(360deg)}}
 #tapstart{width:100vw;height:100vh;height:100dvh;border-radius:0;background:rgba(0,0,0,.45);font-size:24px;font-weight:600}
 @media (pointer:coarse){#badge{font-size:11px}#streetbar{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 190px)}}
+
+#hint.fade{animation:hintfade 9s forwards}@keyframes hintfade{0%,70%{opacity:1}100%{opacity:0;visibility:hidden}}
+#badge.fade{animation:hintfade 10s forwards}
+@media (pointer:coarse), (max-width: 700px) { #streetbar { top: calc(env(safe-area-inset-top, 0px) + 48px) !important; bottom: auto !important; } }

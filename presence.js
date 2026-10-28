@@ -115,7 +115,7 @@ function enableGyro() { const on = () => addEventListener('deviceorientation', e
     $('streetbar').hidden = false; $('turnL').textContent = '◀ Back'; $('turnR').textContent = 'Forward ▶'; $('turnL').onclick = () => nearestLink(false); $('turnR').onclick = () => nearestLink(true);
     $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; view.fov = camera.fov = 75; camera.updateProjectionMatrix(); };
     $('quality').textContent = 'Quality: auto'; $('quality').onclick = () => { quality = quality === 'hi' ? 'lo' : 'hi'; $('quality').textContent = 'Quality: ' + (quality === 'hi' ? 'HD' : 'SD'); const s = cur; cur = -1; go(s); };
-    $('scene').textContent = '3D game street ▸'; $('scene').onclick = () => { location.search = '?scene=game'; }; $('scene').title = 'Other scenes: ?scene=game, ?scene=live';
+    $('scene').textContent = 'Continuous walk ▸'; $('scene').onclick = () => { location.search = ''; }; $('scene').title = 'Other scenes: ?scene=game, ?scene=live';
     $('hint').textContent = isMobile ? 'Drag or turn your phone to look · joystick up/down or the ground arrows to move' : 'Drag to look · scroll to zoom · W/↑ forward, S/↓ back, or click the ground arrows';
     $('loadmsg').textContent = 'Loading spots…'; const r = await fetch(BASE + 'spots.json'); if (!r.ok) throw new Error('spots.json ' + r.status); const j = await r.json(); spots = j.spots;
     quality = params.get('q') || (isMobile || (navigator.connection && navigator.connection.downlink < 3) ? 'lo' : 'hi');
