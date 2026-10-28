@@ -140,5 +140,6 @@ Known artefacts:
 - People's feet can fade at the lower edge of the views. The ground directly below the camera is static.
 - The generated people are invented.
 
-### Generated motion at stops (default, w5)
-Stop walking within about 2.5 s of route from one of the generated stops (listed in `assets/gen/index.json`) and the frozen frame changes into a 20 s AI-generated 360° clip. If you're within 0.5 s of the stop it snaps there and crossfades over 0.5 s; otherwise it crossfades over 0.9 s without a jump. When you walk again it fades out within 0.3 s and the decoder is freed. Everywhere else the frame just freezes. Turn it off with `?gen=0`. The `?crowd=1` test was removed.
+
+### Removed (w6)
+The AI-generated motion at stops (`?gen`) and the `?crowd` test were removed; their files are only in git history. When you stop, the footage simply freezes.

@@ -134,5 +134,6 @@ The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image →
 ## Road overlay (w3)
 `assets/road/asphalt.jpg` (18 KB) is cut from the same source walk footage (a top-down reprojection of the asphalt), flattened and made seamless with a scripted blend. Not AI-generated.
 
-## Generated motion at stops (default since w5)
-`assets/gen/s*.mp4` are AI-generated: at about 20 stops (every 15 s of route, plus t=300), 4 views of the real frame were animated with Grok Imagine image-to-video (2 chained 10 s generations each) and reprojected onto the real 360 frame. Every moving person in them is invented, not a real passer-by. Below about -33° the real frame shows through (with a soft feather down to -46°); in that lower band the real people were removed with YOLO11s-seg masks + OpenCV Telea inpainting, so frozen legs don't ghost under moving generated bodies. The old `?crowd=1` assets (`assets/real`, `assets/crowd`) were deleted to stay under 1 GB.
+
+## Removed (w6)
+No AI-generated video is served any more; the earlier generated clips (`assets/gen`, `assets/crowd`) were deleted and exist only in git history.

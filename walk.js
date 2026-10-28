@@ -23,7 +23,7 @@ const geo = new THREE.SphereGeometry(50, 128, 64); geo.scale(-1, 1, 1);
 const mat = new THREE.MeshBasicMaterial({ color: 0xffffff }); const sphere = new THREE.Mesh(geo, mat); sphere.rotation.y = +(params.get("ry") ?? -Math.PI / 2); scene.add(sphere);
 function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.muted = true; v.defaultMuted = true; v.preload = 'auto'; v.loop = false;
   v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v); return v; }
-let gen = null; if (params.get('gen') !== '0') import('./gen.js?v=g4').then(m => m.initGen(THREE, { scene, sphere, geo, ver: 'g4', isStanding: () => !!view.standing, pos: () => pos(), snapTo })).then(g => { gen = g; window.__gen = g; }).catch(e => console.warn('gen', e)); /* default: AI-generated 360 motion at ~20 stops along the walk (?gen=0 to turn off) */
+const gen = null; /* generated motion at stops removed (w6); see git history */
 const crowd = null; /* ?crowd=1 test removed (assets/real, assets/crowd deleted for space) */
 const audio = document.createElement('audio'); audio.loop = true; audio.preload = 'auto'; document.body.appendChild(audio);
 /* Ambience = the real street sound of the same source (15:00 onward; the route starts at 15:45). One gain controller does all fades; WebAudio gain is used where available because iOS ignores audio.volume. */
@@ -74,7 +74,7 @@ const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyr
 const OLDV = params.get('lowmask') === '0', PORT = () => innerWidth < innerHeight; // w2: portrait = narrower vertical FOV, gaze ~7 deg up and a tighter look-down limit, so the smeared near road takes only the bottom of the screen (?lowmask=0 = old framing)
 const PMIN = () => OLDV ? 0.75 : PORT() ? 0.4 : 0.6, GUP = () => OLDV ? 0 : PORT() ? 0.12 : 0.07;
 // w3 road: the near-field road in the source smears/flows like water (low-res stitched 360 + compression). Overlay a sharp, stable asphalt plane (texture cut from this same footage, made seamless), colour-matched live to the video's road, scrolled with walking so parallax is right; feathered into the video from ~13 deg below the horizon. ?road=0 disables.
-const road = (() => { if (!['1', '2'].includes(params.get('road'))) return null; // w4: off by default (it erased nearby people's legs); ?road=1 opt-in
+const road = (() => { if (params.get('road') !== '1') return null; // w4: off by default (it erased nearby people's legs); ?road=1 opt-in
   const tx = new THREE.TextureLoader().load('assets/road/asphalt.jpg?v=w3'); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const m = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, uniforms: { map: { value: tx }, off: { value: 0 }, gain: { value: new THREE.Color(1, 1, 1) }, cam: { value: new THREE.Vector3() } },
     vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position,1.0); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
