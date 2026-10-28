@@ -27,14 +27,16 @@ class Track {
   get el() { return this.els[this.k]; } get nx() { return this.els[1 - this.k]; }
   get tpos() { return this.ci * this.L + (this.el.currentTime || 0); }
   load(j, i) { if (this.loaded[j] === i || i < 0 || i >= this.urls.length) return; const v = this.els[j]; this.loaded[j] = i; v.src = this.urls[i]; v.load(); }
-  watch(v, j) { const f = () => { if (this === active && j === this.k) { frames++; lastAdv = performance.now(); setSpin(false); if (v.readyState >= 2 && mat.map !== this.tex[j] && !swapping) { mat.map = this.tex[j]; mat.needsUpdate = true; } } v.requestVideoFrameCallback ? v.requestVideoFrameCallback(f) : 0; };
+  watch(v, j) { const f = () => { if (this === active && j === this.k) { frames++; lastAdv = performance.now(); this.nudged = false; setSpin(false); if (v.readyState >= 2 && mat.map !== this.tex[j] && !swapping) { mat.map = this.tex[j]; mat.needsUpdate = true; } } v.requestVideoFrameCallback ? v.requestVideoFrameCallback(f) : 0; };
     if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(f); else v.addEventListener('timeupdate', f); }
   async seek(t) { t = Math.max(0, Math.min(this.D - 0.05, t)); const i = Math.min(this.urls.length - 1, Math.floor(t / this.L));
     if (this.loaded[this.k] !== i) { if (this.loaded[1 - this.k] === i) this.k = 1 - this.k; else this.load(this.k, i); }
     this.ci = i; const v = this.el; if (v.readyState < 1) await new Promise(r => { v.addEventListener('loadedmetadata', r, { once: true }); setTimeout(r, 8000); });
     v.currentTime = t - i * this.L; await new Promise(r => { v.addEventListener('seeked', r, { once: true }); setTimeout(r, 2500); }); this.load(1 - this.k, i + 1); }
   // called every frame: hand over to the preloaded next chunk right at the boundary
-  tick(r) { const v = this.el; if (!v.duration) return; if (this.ci + 1 < this.urls.length && v.currentTime >= v.duration - 0.06 * Math.max(1, r)) { const n = this.nx;
+  tick(r) { const v = this.el; if (!v.duration) return; const n0 = this.nx;
+    if (this.primed !== this.ci && this.ci + 1 < this.urls.length && this.loaded[1 - this.k] === this.ci + 1 && v.currentTime > v.duration - 2.5 * Math.max(1, r) && n0.readyState >= 1) { this.primed = this.ci; n0.play().then(() => { if (this.nx === n0) { n0.pause(); n0.currentTime = 0; } }).catch(() => {}); }
+    if (this.ci + 1 < this.urls.length && v.currentTime >= v.duration - 0.06 * Math.max(1, r)) { const n = this.nx;
       if (this.loaded[1 - this.k] !== this.ci + 1) this.load(1 - this.k, this.ci + 1); if (n.readyState >= 2) { n.currentTime = 0; n.playbackRate = Math.max(0.0625, r); n.play().catch(() => {}); if (n.readyState >= 2) { mat.map = this.tex[1 - this.k]; mat.needsUpdate = true; } v.pause(); this.k = 1 - this.k; this.ci++; chunkSwaps++; setTimeout(() => this.load(1 - this.k, this.ci + 1), 300); } } }
   atEnd() { return this.ci === this.urls.length - 1 && this.el.duration && this.el.currentTime >= this.el.duration - 0.15; }
   pauseAll() { this.els.forEach(v => v.pause()); }
@@ -117,7 +119,7 @@ let btnTarget = null;
     const adv = now - lastAdv < 1500; $('live').textContent = adv ? (Math.abs(rate) > 0.5 ? (rate > 0 ? '● walking' : '● walking back') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
     $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = (pos() / D * 100) + '%';
     renderer.render(scene, camera); });
-  setInterval(() => { if (!window.__state.loaded || swapping) return; const v = active.el; if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 6000) { setSpin(true); $('nodestatus').textContent = 'Reconnecting…'; const p = pos(); active.loaded = [-1, -1]; active.seek(active === fwdT ? p : D - p).then(() => playSafe(active.el)); lastAdv = performance.now(); }
+  setInterval(() => { if (!window.__state.loaded || swapping) return; const v = active.el; if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 2500 && !active.nudged) { active.nudged = true; v.currentTime = v.currentTime + 0.02; playSafe(v); lastAdv = performance.now(); return; } if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 6000) { active.nudged = false; setSpin(true); $('nodestatus').textContent = 'Reconnecting…'; const p = pos(); active.loaded = [-1, -1]; active.seek(active === fwdT ? p : D - p).then(() => playSafe(active.el)); lastAdv = performance.now(); }
     else if (v.paused && !active.atEnd() && $('tapstart').hidden && !soundOn) showTap(); }, 1000);
 })();
 function showTap() { const t = $('tapstart'); t.textContent = '▶ Tap to start'; t.hidden = false; }
