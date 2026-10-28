@@ -76,7 +76,7 @@ let btnTarget = null;
     const probe = document.createElement('video'), ua = navigator.userAgent, isSafari = /Safari/.test(ua) && !/Chrome|CriOS|Chromium|Android|FxiOS/.test(ua);
     const hevcOK = isSafari && probe.canPlayType('video/mp4; codecs="hvc1.1.6.L153.B0"') !== '';
     const c = navigator.connection || {}, weak = c.saveData || (c.downlink && c.downlink < 2.5) || (navigator.deviceMemory && navigator.deviceMemory <= 2);
-    quality = params.get('q') || (weak ? '2k5' : '4k'); const F = j.tracks[quality] || j.tracks['4k'];
+    quality = params.get('q') || (weak ? '2k5' : '4k'); if (!j.tracks[quality]) quality = '4k'; const F = j.tracks[quality];
     const urls = (t) => Array.from({ length: t.n }, (_, i) => BASE + t.pattern.replace('%02d', String(i).padStart(2, '0')));
     fwdT = new Track(urls(F), j.chunk, D); revT = new Track(urls(j.tracks.rev), j.chunk, D); active = fwdT;
     $('badge').innerHTML = `<b>Hội An</b> · real 360° street walk · <a href="CREDITS.md" target="_blank">Credits</a>`; setTimeout(() => $('badge').classList.add('fade'), 100);
