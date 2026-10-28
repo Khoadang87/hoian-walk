@@ -8,7 +8,7 @@ const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|
 const BASE = 'assets/walk/';
 const showError = (m) => { $('loader').hidden = true; const e = $('error'); e.hidden = false; e.textContent = m; console.error('[viewer-error]', m); window.__viewerError = m; };
 window.__state = { loaded: false };
-const IDLE = 0.15, WALK = 1.0, JOG = 1.8;
+const IDLE = +(params.get('idle') || 0.4), WALK = 1.0, JOG = 1.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); $('app').appendChild(renderer.domElement);
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
@@ -46,13 +46,13 @@ class Track {
 let fwdT, revT, active;
 const pos = () => active === fwdT ? fwdT.tpos : D - revT.tpos; // seconds along the route
 function setSpin(on) { $('spin').hidden = !on; }
-async function playSafe(v) { try { await v.play(); return true; } catch (e) { return false; } }
+async function playSafe(v) { try { return await Promise.race([v.play().then(() => true), new Promise(r => setTimeout(() => r(!v.paused), 1500))]); } catch (e) { return false; } }
 async function switchTo(tr) { if (swapping || tr === active) return; swapping = true; const p = pos();
   await tr.seek(tr === fwdT ? p : D - p); tr.el.playbackRate = Math.max(0.0625, Math.abs(rate)); await playSafe(tr.el); if (tr.el.readyState >= 2) { mat.map = tr.tex[tr.k]; mat.needsUpdate = true; }
   active.pauseAll(); active = tr; swapping = false; }
 
 // input
-const view = { yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyroYaw0: 0, lat: 0, latT: 0 };
+const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyroYaw0: 0, lat: 0, latT: 0 };
 let drag = null; const cv = renderer.domElement;
 cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const k = camera.fov / innerHeight * Math.PI / 180; view.yaw += (e.clientX - drag.x) * k; view.pitch = THREE.MathUtils.clamp(view.pitch + (e.clientY - drag.y) * k, -0.9, 1.3); drag.x = e.clientX; drag.y = e.clientY; });
@@ -69,6 +69,9 @@ function enableGyro() { const on = () => addEventListener('deviceorientation', e
 // buttons: hold to walk forward/back (no scene switching)
 function hold(btn, val) { const set = v => e => { e.preventDefault(); e.stopPropagation(); btnTarget = v; }; btn.addEventListener('pointerdown', set(val)); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, set(null)); }
 let btnTarget = null;
+// turning around: you always walk the way you face. Facing back = the reversed footage, seen from behind the camera, so the street flows toward you naturally.
+let lastTurn = 0; function turnAround() { const n = performance.now(); if (n - lastTurn < 900) return; lastTurn = n; view.face = -view.face; $('hint').hidden = true; }
+addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDown') && !e.repeat) turnAround(); });
 
 (async () => {
   try {
@@ -81,20 +84,20 @@ let btnTarget = null;
     fwdT = new Track(urls(F), j.chunk, D); revT = new Track(urls(j.tracks.rev), j.chunk, D); active = fwdT;
     $('badge').innerHTML = `<b>Hội An</b> · real 360° street walk · <a href="CREDITS.md" target="_blank">Credits</a>`; setTimeout(() => $('badge').classList.add('fade'), 100);
     $('streetbar').hidden = false; $('slabel').textContent = j.name;
-    $('turnL').textContent = '◀ Back'; $('turnR').textContent = 'Walk ▶'; hold($('turnL'), -WALK); hold($('turnR'), WALK);
+    $('turnR').textContent = 'Walk ▶'; $('turnL').textContent = '↺ Turn around'; $('turnL').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); turnAround(); }); hold($('turnR'), 'walk');
     $('reset').textContent = 'Face ahead'; $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; };
     if (!j.tracks['2k5']) $('quality').hidden = true;
     document.addEventListener('visibilitychange', () => { if (document.hidden) { audio.pause(); active?.el.pause(); } else { if (soundOn) { audio.volume = 0; audio.play().catch(() => {}); const t0 = performance.now(); const f = () => { const k = Math.min(1, (performance.now() - t0) / 1500); audio.volume = 0.85 * k; if (k < 1) requestAnimationFrame(f); }; f(); } if (active && !active.atEnd()) playSafe(active.el); } });
     $('quality').textContent = quality === '2k5' ? '2.5K' : '4K'; $('quality').onclick = () => { params.set('q', quality === '2k5' ? ('4k') : '2k5'); params.set('t', pos().toFixed(1)); location.search = params.toString(); };
     $('scene').textContent = 'More ▸'; $('scene').onclick = () => { location.search = '?scene=spots'; }; $('scene').title = '?scene=spots (6 tripod spots), ?scene=game, ?scene=live';
-    $('hint').textContent = isMobile ? 'Joystick: walk forward/back · drag or turn phone: look around' : 'W/S or ↑/↓: walk · Shift: jog · drag: look around'; $('hint').classList.add('fade');
+    $('hint').textContent = isMobile ? 'Push the stick up to walk · pull down to turn around · drag or turn your phone to look' : 'W / ↑: walk · S / ↓: turn around · Shift: jog · drag: look around';
     new THREE.TextureLoader().load(BASE + j.poster, t => { t.colorSpace = THREE.SRGBColorSpace; if (!frames) { mat.map = t; mat.needsUpdate = true; if (!window.__state.loaded) renderer.setAnimationLoop(() => renderer.render(scene, camera)); } });
     audio.src = BASE + j.audio;
     const prog = setInterval(() => { try { const v = fwdT.el, b = v.buffered.length ? v.buffered.end(0) - v.currentTime : 0; $('fill').style.width = Math.min(100, 15 + b / 2 * 85) + '%'; } catch (e) {} }, 200);
     $('loadmsg').textContent = 'Loading the street in ' + (quality === '2k5' ? '2.5K' : '4K') + '…';
     await fwdT.seek(+(params.get('t') || j.start || 0)); fwdT.el.playbackRate = IDLE;
     if (fwdT.el.error) throw new Error('video failed to load (' + (fwdT.el.error.code) + ')');
-    clearInterval(prog); $('loader').hidden = true; document.body.classList.remove('loading'); window.__state.loaded = true; setSpin(true);
+    clearInterval(prog); $('loader').hidden = true; document.body.classList.remove('loading'); $('hint').classList.add('fade'); window.__state.loaded = true; setSpin(true);
     if (!(await playSafe(fwdT.el))) showTap();
     let gyroOn = false;
     const onGesture = () => { $('tapstart').hidden = true; if (active.el.paused && !active.atEnd()) playSafe(active.el);
@@ -105,19 +108,21 @@ let btnTarget = null;
   } catch (e) { showError('The walk could not start: ' + e.message + '\nPlease reload. (Older version: ?scene=spots)'); return; }
   let last = performance.now();
   renderer.setAnimationLoop(() => { const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
-    let t = btnTarget; const kf = keys.KeyW || keys.ArrowUp, kb = keys.KeyS || keys.ArrowDown, jog = keys.ShiftLeft || keys.ShiftRight;
-    if (t == null) { if (kf) t = jog ? JOG : WALK; else if (kb) t = -(jog ? JOG : WALK); else if (Math.abs(joy.y) > 0.15) { const m = (Math.abs(joy.y) - 0.15) / 0.85; t = -Math.sign(joy.y) * (m < 0.85 ? IDLE + (WALK - IDLE) * m / 0.85 : JOG); } else t = IDLE; }
+    let t = btnTarget === 'walk' ? WALK : null; const kf = keys.KeyW || keys.ArrowUp, jog = keys.ShiftLeft || keys.ShiftRight;
+    if (joy.y > 0.75 && !view.joyTurned) { view.joyTurned = true; turnAround(); } else if (joy.y < 0.4) view.joyTurned = false;
+    if (t == null) { if (kf) t = jog ? JOG : WALK; else if (joy.y < -0.15) { const m = (-joy.y - 0.15) / 0.85; t = m < 0.85 ? IDLE + (WALK - IDLE) * m / 0.85 : JOG; } }
+    t = t == null ? IDLE : t * view.face; if (Math.abs(t) <= IDLE + 1e-6) t = IDLE; // standing: natural-looking forward footage at a slow drift
     target = t; rate += (target - rate) * Math.min(1, dt * 2.5);
     view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.3 ? joy.x : 0); view.lat += (view.latT * 0.6 - view.lat) * Math.min(1, dt * 3);
     if (window.__state.loaded && !swapping) {
       const idle = Math.abs(target) < 0.5;
       // direction: walking back uses the reversed track; idle keeps the current track (and ping-pongs at the ends)
-      let want = rate < -0.05 ? revT : rate > 0.3 ? fwdT : active; if (idle && active.atEnd()) want = active === fwdT ? revT : fwdT;
+      let want = rate < -0.05 ? revT : rate > 0.3 ? fwdT : active; if (idle) want = (pos() >= D - 0.5) ? active : fwdT;
       if (want !== active && !(want === revT && pos() <= 0.2) && !(want === fwdT && pos() >= D - 0.2)) switchTo(want);
       else { const v = active.el, pr = Math.max(0.0625, Math.min(3, Math.abs(rate))); if (Math.abs(v.playbackRate - pr) > 0.02) v.playbackRate = pr; active.tick(pr);
-        if (active.atEnd()) { $('nodestatus').textContent = active === fwdT ? 'End of the street — walk back' : 'Start of the street'; } else if ($('nodestatus').textContent.startsWith('End') || $('nodestatus').textContent.startsWith('Start')) $('nodestatus').textContent = ''; }
+        if (active.atEnd() || (active === fwdT && pos() >= D - 0.5)) { $('nodestatus').textContent = (active === fwdT ? 'Inside the hall — end of the walk' : 'Start of the street') + ' · tap ↺ Turn around'; $('turnL').classList.add('pulse'); } else { $('turnL').classList.remove('pulse'); if ($('nodestatus').textContent.includes('Turn around')) $('nodestatus').textContent = ''; } }
     }
-    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; camera.quaternion.setFromEuler(new THREE.Euler(view.sp, view.sy, 0, 'YXZ'));
+    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - 0.5 /* 29° off dead-behind: keeps the camera carrier out of a phone-width view */; view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
     const adv = now - lastAdv < 1500; $('live').textContent = adv ? (Math.abs(rate) > 0.5 ? (rate > 0 ? '● walking' : '● walking back') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
@@ -127,4 +132,4 @@ let btnTarget = null;
     else if (v.paused && !active.atEnd() && $('tapstart').hidden && !soundOn) showTap(); }, 1000);
 })();
 function showTap() { const t = $('tapstart'); t.textContent = '▶ Tap to start'; t.hidden = false; }
-window.__test = { setYaw: y => view.yaw = y, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
+window.__test = { turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };

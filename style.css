@@ -29,3 +29,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;font:14px system-
 @media (pointer:coarse), (max-width: 700px) { #streetbar { top: calc(env(safe-area-inset-top, 0px) + 48px) !important; bottom: auto !important; } }
 body.loading #joy,body.loading #buttons,body.loading #live{opacity:0;pointer-events:none}
 #joy,#buttons,#live{transition:opacity .5s}
+#turnL.pulse{animation:pulse 1.4s ease-in-out infinite;background:#ffd54a;color:#111}
+@keyframes pulse{50%{transform:scale(1.07)}}
+#hint{font-size:12px;text-shadow:0 1px 3px #000}
