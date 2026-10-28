@@ -2,13 +2,13 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Walk a real captured place (prototype)</title>
+<title>Hội An street (prototype)</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js","@mkkellogg/gaussian-splats-3d":"./vendor/gaussian-splats-3d.module.js"}}</script>
 </head><body>
 <div id="app"></div>
-<div id="badge">Real capture: <b>“Truck” scene, Tanks and Temples dataset</b> (outdoor, real photos → 3D Gaussian splat). <u>Not Hội An</u> – no licensed Hội An capture was found. <a href="CREDITS.md" target="_blank">Credits</a></div>
+<div id="badge"></div>
 <div id="loader"><div id="loadmsg">Starting…</div><div id="bar"><div id="fill"></div></div><div id="loaddetail"></div></div>
 <div id="error" hidden></div>
 <button id="tapstart" hidden>▶ Tap to start the live street</button>
@@ -16,5 +16,5 @@
 <div id="joy"><div id="knob"></div></div>
 <div id="buttons"><button id="turnL" aria-label="Turn left">⟲ Turn</button><button id="turnR" aria-label="Turn right">Turn ⟳</button><button id="reset">Reset</button><button id="quality"></button><button id="scene"></button></div>
 <div id="hint">Drag to look · WASD / arrows to move (desktop) · joystick to move (phone)</div>
-<script type="module" src="main.js"></script>
+<script type="module">const s = new URLSearchParams(location.search).get('scene'); import(!s || s === 'game' ? './game.js' : './main.js');</script>
 </body></html>
