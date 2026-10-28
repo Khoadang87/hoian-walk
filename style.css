@@ -7,7 +7,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;font:14px system-
 #loaddetail{font-size:12px;opacity:.8}
 #error{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(86vw,420px);background:#400;border:1px solid #f66;padding:16px;border-radius:10px;z-index:7;white-space:pre-wrap}
 #joy{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom,0));width:120px;height:120px;border-radius:50%;background:#fff2;border:2px solid #fff6;z-index:5;touch-action:none}
-#knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fffa;pointer-events:none}
+#knob{transition:transform .2s ease-out;position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fffa;pointer-events:none}
 #buttons{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;gap:8px;z-index:5}
 #buttons button{font-size:15px;padding:10px 14px;border-radius:8px;border:0;background:#fffd;color:#000}
 #hint{position:fixed;bottom:4px;left:0;right:0;text-align:center;font-size:11px;opacity:.7;z-index:4;pointer-events:none}
