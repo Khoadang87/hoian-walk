@@ -32,3 +32,5 @@ body.loading #joy,body.loading #buttons,body.loading #live{opacity:0;pointer-eve
 #turnL.pulse{animation:pulse 1.4s ease-in-out infinite;background:#ffd54a;color:#111}
 @keyframes pulse{50%{transform:scale(1.07)}}
 #hint{font-size:12px;text-shadow:0 1px 3px #000}
+@media (pointer:coarse), (max-width: 700px) { #hint { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 172px); left: 50%; right: auto; transform: translateX(-50%); width: min(80vw, 420px); background: #000a; border-radius: 8px; padding: 6px 10px; opacity: 1; font-size: 13px } }
+#hint.fade{animation-duration:12s}
