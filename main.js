@@ -36,7 +36,7 @@ const SCENES = {
 };
 let sceneKey = SCENES[params.get('scene')] ? params.get('scene') : 'live';
 if (sceneKey === 'truck' && isIOS) sceneKey = 'live'; // the splat viewer hits a WASM shared-memory error on iOS: hidden there
-const NEXT = isIOS ? { live: 'corner', corner: 'walk', walk: 'game', hoian: 'hoian1', hoian1: 'live' } : { live: 'corner', corner: 'walk', walk: 'truck', truck: 'game', hoian: 'hoian1', hoian1: 'truck' };
+const NEXT = isIOS ? { live: 'corner', corner: 'walk', walk: 'presence', hoian: 'hoian1', hoian1: 'live' } : { live: 'corner', corner: 'walk', walk: 'truck', truck: 'presence', hoian: 'hoian1', hoian1: 'truck' };
 const SC = SCENES[sceneKey];
 let quality = params.get('q') || (isMobile ? 'mobile' : 'desktop');
 const ASSET_URL = SC.assets ? (params.get('src') || SC.assets[quality] || SC.assets.mobile) : null;
@@ -72,7 +72,7 @@ $('reset').onclick = reset;
 $('quality').textContent = quality === 'desktop' ? 'Lighter scene' : 'Sharper scene';
 document.getElementById('badge').innerHTML = SC.badge + ' <a href="CREDITS.md" target="_blank">Credits</a>';
 if (SC.renderer === 'walk' || SC.renderer === 'video') document.getElementById('badge').appendChild(document.getElementById('streetbar'));
-$('scene').textContent = 'Scene: ' + { live: 'Hội An LIVE walk', corner: 'Hội An LIVE corner', walk: 'Hội An photo walk', hoian: 'Hội An 360° corner', hoian1: 'Hội An photo', truck: 'Truck', game: '3D game street' }[NEXT[sceneKey]];
+$('scene').textContent = 'Scene: ' + { live: 'Hội An LIVE walk', corner: 'Hội An LIVE corner', walk: 'Hội An photo walk', hoian: 'Hội An 360° corner', hoian1: 'Hội An photo', truck: 'Truck', game: '3D game street', presence: 'Hội An 360° spots (default)' }[NEXT[sceneKey]];
 $('scene').onclick = () => { params.set('scene', NEXT[sceneKey]); location.search = params.toString(); };
 if (SC.renderer === 'walk' || SC.renderer === 'video') $('quality').hidden = true;
 $('quality').onclick = () => { params.set('q', quality === 'desktop' ? 'mobile' : 'desktop'); location.search = params.toString(); };

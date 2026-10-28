@@ -1,6 +1,6 @@
 // Hội An riverside street as a real-time 3D game world (three.js). Procedural shophouses / river / props (all built in
 // code, no downloads) + CC0 Quaternius Universal Animation Library mannequins (rigged, animated) recoloured per NPC.
-// Default scene; the 360° live-video street stays at ?scene=live.
+// 3D game street at ?scene=game (default is now presence.js; live-video walk at ?scene=live).
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from './vendor/addons/libs/meshopt_decoder.module.js';
@@ -373,7 +373,7 @@ window.__game = { CH, stats: () => ({ fps: fpsBuf.length ? +(fpsBuf.length / ((f
     $('badge').innerHTML = '<b>Hội An riverside street: 3D game world (prototype).</b> Walk freely; everything is real-time 3D, modelled after Bạch Đằng St. by the Thu Bồn river. Characters: CC0 Quaternius mannequins. <a href="CREDITS.md" target="_blank">Credits</a>';
     $('hint').textContent = isMobile ? 'Joystick to walk (push fully to jog) · drag to look' : 'WASD / arrows to walk · Shift to jog · drag to look · V = 3rd person';
     $('turnL').hidden = $('turnR').hidden = true; $('quality').textContent = '3rd person'; $('quality').onclick = toggleThird; $('reset').onclick = resetPlayer;
-    $('scene').textContent = 'Live video street ▸'; $('scene').onclick = () => { location.search = '?scene=live'; };
+    $('scene').textContent = '360° real spots ▸'; $('scene').onclick = () => { location.search = ''; };
     const db = document.createElement('button'); db.id = 'dusk'; db.textContent = dusk ? 'Day' : 'Dusk'; db.onclick = () => { dusk = !dusk; db.textContent = dusk ? 'Day' : 'Dusk'; setLighting(); }; $('buttons').insertBefore(db, $('scene'));
     $('loadmsg').textContent = 'Building the street…'; await new Promise(r => setTimeout(r, 30));
     buildWorld(); setLighting(); $('fill').style.width = '25%';
