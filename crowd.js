@@ -3,15 +3,28 @@
 // Clips are H.264 with colour in the top half and the alpha matte in the bottom half (works on iOS Safari).
 const FLOOR = -1.6, rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
 export async function initCrowd(THREE, o) {
-  const { scene, camera, sphere, geo, isStanding, pos, snapTo } = o;
-  const [clips, pj] = await Promise.all([fetch('assets/crowd/clips.json').then(r => r.json()), fetch('assets/plates/plates.json').then(r => r.json())]); const plates = pj.plates || pj;
+  const { scene, camera, sphere, geo, isStanding, pos, snapTo, renderer, ver = '' } = o; const V = ver ? '?v=' + ver : '';
+  const dbg = { errs: [], gap: null, mode: '-', tex: '' }; const err = e => { dbg.errs.push(String(e).slice(0, 80)); if (dbg.errs.length > 4) dbg.errs.shift(); };
+  // video pool: a few detached, muted, inline <video>s primed on the first tap. iOS refuses play() on hidden in-page videos
+  // ("invisible autoplay") and has few decoders, so we never make more than POOL at once and keep them out of the DOM.
+  const POOL = 4, pool = []; let primed = false;
+  for (let i = 0; i < POOL; i++) { const v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.crossOrigin = 'anonymous'; v.preload = 'auto'; v.addEventListener('error', () => err('video ' + (v.error && v.error.code) + ' ' + (v.src || '').split('/').pop())); pool.push({ v, busy: false }); }
+  const prime = () => { if (primed) return; primed = true; for (const s of pool) { s.v.src = 'assets/crowd/L1.mp4' + V; const pr = s.v.play(); pr && pr.then(() => { if (!s.busy) s.v.pause(); }).catch(e => err('prime ' + e.name)); } };
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) addEventListener(ev, prime, { capture: true, passive: true });
+  const maxTex = renderer ? renderer.capabilities.maxTextureSize : 4096; dbg.tex = 'maxTex ' + maxTex;
+  const [clips, pj] = await Promise.all([fetch('assets/crowd/clips.json' + V, { cache: 'no-cache' }).then(r => r.json()), fetch('assets/plates/plates.json' + V, { cache: 'no-cache' }).then(r => r.json())]); const plates = pj.plates || pj, free = pj.free || {}, freeP = Object.keys(free).map(Number);
   const still = clips.filter(c => c.kind !== 'walk'), walkers = clips.filter(c => c.kind === 'walk');
   const recent = []; // clips seen at the last stops, avoided so the same person does not come straight back
   // plate sphere: same geometry (incl. the floor proxy), drawn over the video
   const pmat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false });
   const pmesh = new THREE.Mesh(geo, pmat); pmesh.rotation.copy(sphere.rotation); pmesh.renderOrder = 1; pmesh.visible = false; scene.add(pmesh);
   const loader = new THREE.TextureLoader(); const texCache = new Map();
-  const loadPlate = pl => { if (!texCache.has(pl.img)) texCache.set(pl.img, new Promise(res => loader.load('assets/plates/' + pl.img, t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; res(t); }, undefined, () => res(null)))); return texCache.get(pl.img); };
+  const loadPlate = pl => { if (!texCache.has(pl.img)) {
+    while (texCache.size >= 2) { const [k, pr] = texCache.entries().next().value; texCache.delete(k); pr.then(t => t && t !== pmat.map && t.dispose()); } // 4K textures are ~32 MB of GPU memory each on iOS
+    texCache.set(pl.img, new Promise(res => loader.load('assets/plates/' + pl.img + V, t => {
+      const im = t.image; if (im && Math.max(im.width, im.height) > maxTex) { const c = document.createElement('canvas'), k = maxTex / Math.max(im.width, im.height); c.width = im.width * k | 0; c.height = im.height * k | 0; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); t.image = c; }
+      t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; res(t); }, undefined, e => { err('plate load ' + pl.img); res(null); }))); }
+    return texCache.get(pl.img); };
   const nearest = p => plates.reduce((a, b) => Math.abs(b.p - p) < Math.abs(a.p - p) ? b : a);
   // equirect (u,v) of a plate pixel -> point on the floor in world space (same maths as three's SphereGeometry + scale(-1,1,1) + sphere rotation)
   const floorPoint = (u, v) => { const ph = u * 2 * Math.PI, th = v * Math.PI; const d = new THREE.Vector3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).applyEuler(sphere.rotation); if (d.y > -0.03) return null; return d.multiplyScalar(-1.6 / d.y).setY(FLOOR); };
@@ -25,24 +38,23 @@ export async function initCrowd(THREE, o) {
   const hfov = () => 2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect);
   const inView = p => { const d = p.clone().sub(camera.position).normalize(), f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); return Math.acos(Math.max(-1, Math.min(1, d.x * f.x + d.z * f.z) / Math.hypot(f.x, f.z) / Math.hypot(d.x, d.z))) < hfov() / 2 + 0.15; };
   function make(C, at, tint) {
-    const v = document.createElement('video'); v.src = 'assets/crowd/' + C.src; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.crossOrigin = 'anonymous'; v.preload = 'auto'; v.loop = C.kind !== 'walk';
-    v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v);
+    const slot = pool.find(s => !s.busy); if (!slot) return null; slot.busy = true; const v = slot.v; v.loop = C.kind !== 'walk'; v.onended = null; v.src = 'assets/crowd/' + C.src + V; v.load();
     const tex = new THREE.VideoTexture(v); tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter;
     const h = C.m, w = h * C.w / C.h2, g = new THREE.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
     const mat = new THREE.ShaderMaterial({ uniforms: { map: { value: tex }, op: { value: 0 }, flip: { value: 0 }, tint: { value: new THREE.Vector3(...tint) } }, vertexShader: vs, fragmentShader: fs, transparent: true, depthTest: false, depthWrite: false });
     const mesh = new THREE.Mesh(g, mat); mesh.renderOrder = 10; mesh.position.copy(at);
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.15, Math.max(0.45, w * 0.5)), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0 }));
     sh.rotation.x = -Math.PI / 2; sh.renderOrder = 9; sh.position.copy(at).setY(FLOOR + 0.01);
-    scene.add(sh); scene.add(mesh); if (!v.loop) v.addEventListener('ended', () => { p.done = true; });
-    if (v.loop) v.currentTime = rnd(0, C.dur - 0.5); // different moment of the loop for each person
-    const p = { C, v, tex, mesh, sh, mat, op: 0, start: at.clone(), dir: null, done: false }; people.push(p); v.play().catch(() => {}); return p;
+    scene.add(sh); scene.add(mesh); if (!v.loop) v.onended = () => { p.done = true; };
+    if (v.loop) v.addEventListener('loadedmetadata', () => { try { v.currentTime = rnd(0, C.dur - 0.5); } catch (e) {} }, { once: true }); // different moment of the loop for each person
+    const p = { slot, C, v, tex, mesh, sh, mat, op: 0, start: at.clone(), dir: null, done: false }; people.push(p); v.play().catch(e => err('play ' + e.name)); return p;
   }
-  function kill(p) { p.v.pause(); p.v.removeAttribute('src'); p.v.load(); p.v.remove(); p.tex.dispose(); p.mesh.geometry.dispose(); p.mat.dispose(); p.sh.geometry.dispose(); p.sh.material.dispose(); scene.remove(p.mesh); scene.remove(p.sh); }
-  const spotsOf = pl => pl.spots.map(([u, v]) => floorPoint(u, v)).filter(q => q && Math.hypot(q.x - camera.position.x, q.z - camera.position.z) > 2.6 && Math.hypot(q.x, q.z) < 16);
+  function kill(p) { p.v.pause(); p.v.onended = null; p.slot.busy = false; p.tex.dispose(); p.mesh.geometry.dispose(); p.mat.dispose(); p.sh.geometry.dispose(); p.sh.material.dispose(); scene.remove(p.mesh); scene.remove(p.sh); }
+  const spotsOf = pl => pl.spots.concat(pl.frozen ? [] : (free[pl.p] || [])).map(([u, v]) => floorPoint(u, v)).filter(q => q && Math.hypot(q.x - camera.position.x, q.z - camera.position.z) > 2.6 && Math.hypot(q.x, q.z) < 16);
   const order = arr => arr.slice().sort((a, b) => (recent.includes(a.src) - recent.includes(b.src)) || Math.random() - 0.5);
   function populate(pl) {
     const sp = spotsOf(pl).sort(() => Math.random() - 0.5); const tint = pl.tint || [1, 0.97, 0.93]; const taken = [];
-    for (const C of order(still)) { if (taken.length >= Math.min(5, sp.length)) break; const at = sp.find(q => taken.every(t => t.distanceTo(q) > 1.4)); if (!at) break; taken.push(at); make(C, at, tint); recent.push(C.src); }
+    for (const C of order(still)) { if (taken.length >= Math.min(POOL - 1, sp.length)) break; const at = sp.find(q => taken.every(t => t.distanceTo(q) > 1.4)); if (!at) break; if (!make(C, at, tint)) break; taken.push(at); recent.push(C.src); }
     while (recent.length > 8) recent.shift(); nextWalker = performance.now() / 1000 + rnd(0.5, 2.5);
   }
   function spawnWalker(pl) {
@@ -50,24 +62,32 @@ export async function initCrowd(THREE, o) {
     const at = pick(sp); const ray = at.clone().sub(camera.position).setY(0).normalize(); let dir = new THREE.Vector3(-ray.z, 0, ray.x); // side-on to you
     const len = C.speed * C.dur; let s0 = at.clone().addScaledVector(dir, -len / 2);
     if (inView(s0)) { dir.negate(); s0 = at.clone().addScaledVector(dir, -len / 2); } if (inView(s0)) return; // only walk in from outside your view
-    const p = make(C, s0, pl.tint || [1, 0.97, 0.93]); p.dir = dir; p.op = 1; recent.push(C.src);
+    const p = make(C, s0, pl.tint || [1, 0.97, 0.93]); if (!p) return; p.dir = dir; p.op = 1; recent.push(C.src);
   }
-  let fadeIn = 0.45;
+  let fadeIn = 0.45, plateOn = false;
   async function showPlate() {
-    busy = true; const pl = nearest(pos()); const d = Math.abs(pl.p - pos()); const t = d <= 0.8 ? await loadPlate(pl) : null;
-    if (!t || !isStanding()) { busy = false; return; }
+    busy = true; prime(); const pl = nearest(pos()); const d = Math.abs(pl.p - pos()); dbg.gap = d; const t = d <= 0.8 ? await loadPlate(pl).catch(e => { err(e); return null; }) : null;
+    if (!isStanding()) { busy = false; return; }
+    if (!t) { // no clean plate here (or it failed to load): still show people, on spots that are clear of real people in this frame
+      const fp = freeP.filter(k => free[k].length >= 2).reduce((a, b) => Math.abs(b - pos()) < Math.abs(a - pos()) ? b : a, freeP[0]); // nearest frame with clear spots
+      const fake = { p: fp, spots: (free[fp] || []), tint: pl.tint, frozen: true }; plate = fake; dbg.mode = 'frozen+people'; populate(fake); phase = 'plate'; plateOn = false; busy = false; return; }
+    dbg.mode = 'plate'; plateOn = true;
     if (d <= 0.5) { await snapTo(pl.p); fadeIn = 0.45; } else fadeIn = 0.9; // tiny snaps only; further off, a slower dissolve hides the small mismatch instead of a visible jump
     if (!isStanding()) { busy = false; return; }
     pmat.map = t; pmat.needsUpdate = true; pmesh.visible = true; plate = pl; populate(pl); phase = 'plate'; busy = false;
   }
+  const dEl = new URLSearchParams(location.search).get('debug') === '1' ? Object.assign(document.createElement('pre'), { id: 'crowddbg' }) : null;
+  if (dEl) { dEl.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:6px 8px;background:rgba(0,0,0,.65);color:#9f9;font:11px/1.35 monospace;pointer-events:none;white-space:pre;max-width:94vw;overflow:hidden;border-radius:6px'; document.body.appendChild(dEl); addEventListener('error', e => err(e.message)); addEventListener('unhandledrejection', e => err(e.reason)); }
+  let dT = 0;
   return {
     update(dt) {
+      if (dEl && (dT += dt) > 0.25) { dT = 0; dEl.textContent = `crowd ${ver} ${phase} ${isStanding() ? 'STOPPED' : 'walking'} pos ${pos().toFixed(2)}\nmode ${dbg.mode} plate ${plate ? plate.p : '-'} gap ${dbg.gap == null ? '-' : dbg.gap.toFixed(2)} op ${plateOp.toFixed(2)}\nprimed ${primed} people ${people.length}: ${people.map(p => p.C.src.replace('.mp4', '') + ':' + p.v.readyState + (p.v.paused ? 'P' : '>') + p.v.currentTime.toFixed(1)).join(' ')}\n${dbg.tex} plates ${plates.length}\n${dbg.errs.join('\n')}`; }
       const st = isStanding(), now = performance.now() / 1000; standT = st ? standT + dt : 0;
       if (phase === 'walk' && st && standT > 0.35 && !busy) { phase = 'loading'; showPlate().then(() => { if (phase === 'loading') phase = 'walk'; }); }
       if (!st && phase !== 'walk') phase = 'leaving';
-      const goal = phase === 'plate' ? 1 : 0; plateOp += Math.sign(goal - plateOp) * Math.min(Math.abs(goal - plateOp), dt / (goal ? fadeIn : 0.25)); pmat.opacity = plateOp;
-      if (phase === 'leaving' && plateOp <= 0) { pmesh.visible = false; for (const p of people) kill(p); people.length = 0; phase = 'walk'; plate = null; }
-      if (phase === 'plate' && now > nextWalker && people.filter(p => p.dir).length < 2) { spawnWalker(plate); nextWalker = now + rnd(3, 7); }
+      const goal = phase === 'plate' ? 1 : 0; plateOp += Math.sign(goal - plateOp) * Math.min(Math.abs(goal - plateOp), dt / (goal ? fadeIn : 0.25)); pmat.opacity = plateOn ? plateOp : 0; pmesh.visible = plateOn && plateOp > 0;
+      if (phase === 'leaving' && plateOp <= 0) { pmesh.visible = false; plateOn = false; for (const p of people) kill(p); people.length = 0; phase = 'walk'; plate = null; }
+      if (phase === 'plate' && now > nextWalker && people.filter(p => p.dir).length < 1) { spawnWalker(plate); nextWalker = now + rnd(3, 7); }
       for (const p of [...people]) {
         if (p.dir) { // walkers: body follows the gait speed measured from the clip, minus the clip's own in-frame drift (no foot sliding)
           const t = p.v.currentTime || 0, f = Math.min(p.C.off.length - 1, Math.round(t * 24));
