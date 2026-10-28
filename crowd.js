@@ -52,10 +52,11 @@ export async function initCrowd(THREE, o) {
     if (inView(s0)) { dir.negate(); s0 = at.clone().addScaledVector(dir, -len / 2); } if (inView(s0)) return; // only walk in from outside your view
     const p = make(C, s0, pl.tint || [1, 0.97, 0.93]); p.dir = dir; p.op = 1; recent.push(C.src);
   }
+  let fadeIn = 0.45;
   async function showPlate() {
-    busy = true; const pl = nearest(pos()); const t = Math.abs(pl.p - pos()) < 1.6 ? await loadPlate(pl) : null;
+    busy = true; const pl = nearest(pos()); const d = Math.abs(pl.p - pos()); const t = d <= 0.8 ? await loadPlate(pl) : null;
     if (!t || !isStanding()) { busy = false; return; }
-    await snapTo(pl.p); // nudge the (hidden) video to the plate's exact spot, so walking on continues from there
+    if (d <= 0.5) { await snapTo(pl.p); fadeIn = 0.45; } else fadeIn = 0.9; // tiny snaps only; further off, a slower dissolve hides the small mismatch instead of a visible jump
     if (!isStanding()) { busy = false; return; }
     pmat.map = t; pmat.needsUpdate = true; pmesh.visible = true; plate = pl; populate(pl); phase = 'plate'; busy = false;
   }
@@ -64,7 +65,7 @@ export async function initCrowd(THREE, o) {
       const st = isStanding(), now = performance.now() / 1000; standT = st ? standT + dt : 0;
       if (phase === 'walk' && st && standT > 0.35 && !busy) { phase = 'loading'; showPlate().then(() => { if (phase === 'loading') phase = 'walk'; }); }
       if (!st && phase !== 'walk') phase = 'leaving';
-      const goal = phase === 'plate' ? 1 : 0; plateOp += Math.sign(goal - plateOp) * Math.min(Math.abs(goal - plateOp), dt / (goal ? 0.45 : 0.25)); pmat.opacity = plateOp;
+      const goal = phase === 'plate' ? 1 : 0; plateOp += Math.sign(goal - plateOp) * Math.min(Math.abs(goal - plateOp), dt / (goal ? fadeIn : 0.25)); pmat.opacity = plateOp;
       if (phase === 'leaving' && plateOp <= 0) { pmesh.visible = false; for (const p of people) kill(p); people.length = 0; phase = 'walk'; plate = null; }
       if (phase === 'plate' && now > nextWalker && people.filter(p => p.dir).length < 2) { spawnWalker(plate); nextWalker = now + rnd(3, 7); }
       for (const p of [...people]) {
