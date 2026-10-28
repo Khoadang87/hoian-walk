@@ -2,11 +2,19 @@ import * as THREE from 'three';
 import * as GS from '@mkkellogg/gaussian-splats-3d';
 import { StreetWalk } from './walk.js';
 import { PhotoWalk } from './photowalk.js';
+import { VideoWalk } from './videowalk.js';
 
 // ---------- config ----------
 const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const params = new URLSearchParams(location.search);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const SCENES = {
+  live: { label: 'Hội An LIVE street walk', manifest: 'assets/hoian_live/live.json', renderer: 'video', fov: 75,
+    bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.6,
+    badge: '<b>Hội An Old Town riverside street: LIVE 360° video you walk yourself (test).</b> Walk forward/back to move through the real video; stop and the street keeps moving. From a 360° YouTube walk, © video owner, published with the owner\'s approval.' },
+  corner: { label: 'Hội An LIVE corner', manifest: 'assets/hoian_live/live.json', renderer: 'video', loop: true, fov: 75,
+    bounds: { minX: 0, maxX: 0, minZ: 0, maxZ: 0 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 0,
+    badge: '<b>Hội An, Tran Phu St. corner: LIVE 360° (test).</b> Stand on the corner and look around while the street goes by (seamless loop of a tripod 360° video; in-between frames interpolated from a 6 fps source). © video owner.' },
   walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk3/nodes.json', renderer: 'walk', fov: 75,
     // corridor: z = metres along the street (set from the manifest), x = ±1.5 m sideways. Eye at the 360° camera height.
     bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.6,
@@ -25,8 +33,9 @@ const SCENES = {
     bounds: { minX: -0.4, maxX: 0.4, minZ: -0.25, maxZ: 1.0 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 0.4, renderer: 'points', fov: 50, // data stored at 1/4 scale: 0.25 unit = 1 m (approx)
     badge: '<b>Hội An Old Town street corner, PRIVATE TEST.</b> APPROXIMATION from 1 YouTube frame + AI depth, not a true 3D scan. © video owner, not for redistribution.' },
 };
-const sceneKey = SCENES[params.get('scene')] ? params.get('scene') : 'walk';
-const NEXT = { truck: 'walk', walk: 'hoian', hoian: 'hoian1', hoian1: 'truck' };
+let sceneKey = SCENES[params.get('scene')] ? params.get('scene') : 'live';
+if (sceneKey === 'truck' && isIOS) sceneKey = 'live'; // the splat viewer hits a WASM shared-memory error on iOS: hidden there
+const NEXT = isIOS ? { live: 'corner', corner: 'walk', walk: 'live', hoian: 'hoian1', hoian1: 'live' } : { live: 'corner', corner: 'walk', walk: 'truck', truck: 'live', hoian: 'hoian1', hoian1: 'truck' };
 const SC = SCENES[sceneKey];
 let quality = params.get('q') || (isMobile ? 'mobile' : 'desktop');
 const ASSET_URL = SC.assets ? (params.get('src') || SC.assets[quality] || SC.assets.mobile) : null;
@@ -61,10 +70,10 @@ reset();
 $('reset').onclick = reset;
 $('quality').textContent = quality === 'desktop' ? 'Lighter scene' : 'Sharper scene';
 document.getElementById('badge').innerHTML = SC.badge + ' <a href="CREDITS.md" target="_blank">Credits</a>';
-if (SC.renderer === 'walk') document.getElementById('badge').appendChild(document.getElementById('streetbar'));
-$('scene').textContent = 'Scene: ' + { walk: 'Hội An walk', hoian: 'Hội An 360° corner', hoian1: 'Hội An photo', truck: 'Truck' }[NEXT[sceneKey]];
+if (SC.renderer === 'walk' || SC.renderer === 'video') document.getElementById('badge').appendChild(document.getElementById('streetbar'));
+$('scene').textContent = 'Scene: ' + { live: 'Hội An LIVE walk', corner: 'Hội An LIVE corner', walk: 'Hội An photo walk', hoian: 'Hội An 360° corner', hoian1: 'Hội An photo', truck: 'Truck' }[NEXT[sceneKey]];
 $('scene').onclick = () => { params.set('scene', NEXT[sceneKey]); location.search = params.toString(); };
-if (SC.renderer === 'walk') $('quality').hidden = true;
+if (SC.renderer === 'walk' || SC.renderer === 'video') $('quality').hidden = true;
 $('quality').onclick = () => { params.set('q', quality === 'desktop' ? 'mobile' : 'desktop'); location.search = params.toString(); };
 
 function applyCamera() {
@@ -106,7 +115,7 @@ async function fetchWithProgress(url) {
   let res;
   try { res = await fetch(url); }
   catch (e) { throw new Error(`Network/CORS error fetching the scene:\n${url}\n\nThe server may be offline, or a remote host is not sending Access-Control-Allow-Origin. Serve the files from this folder (see README) or use a CORS-enabled URL.\n(${e.message})`); }
-  if (!res.ok) throw new Error(`Scene download failed: HTTP ${res.status} ${res.statusText}\n${url}\nIf the asset is missing, run scripts/fetch-asset.sh (see README).`);
+  if (!res.ok) throw new Error(`Scene download failed: HTTP ${res.status} ${res.statusText}\n${url}\nPlease reload in a moment.`);
   const total = +res.headers.get('content-length') || 0;
   const reader = res.body.getReader(); const chunks = []; let got = 0;
   for (;;) {
@@ -146,7 +155,7 @@ async function loadWalk() {
   if (WalkClass === StreetWalk) SC.manifest = 'assets/hoian_walk/nodes.json';
   if (params.get('render') === 'mesh') SC.manifest = 'assets/hoian_walk2/nodes.json'; // previous depth-mesh version
   let man; try { const r = await fetch(SC.manifest); if (!r.ok) throw new Error('HTTP ' + r.status); man = await r.json(); }
-  catch (e) { throw new Error(`Could not load the street manifest ${SC.manifest} (${e.message}).\nThe private Hội An assets are not in the shared zip: run scripts/build-hoian-walk.sh, or check your network/CORS.`); }
+  catch (e) { throw new Error(`Could not load the street manifest ${SC.manifest} (${e.message}).\nCheck your connection and reload.`); }
   BOUNDS.maxZ = man.nodes[man.nodes.length - 1].z;
   walk = new WalkClass({ base: SC.manifest.replace(/[^/]*$/, ''), manifest: man, scene, isMobile,
     onProgress: (got, total, i) => { const pct = total ? Math.round(100 * got / total) : 0; $('fill').style.width = pct + '%'; $('loadmsg').textContent = `Loading street view ${i + 1}/${man.nodes.length}… ${pct}%`; $('loaddetail').textContent = `${(got / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB · ${man.nodes.length} views along ${man.length.toFixed(0)} m`; },
@@ -155,8 +164,24 @@ async function loadWalk() {
   $('streetbar').hidden = false; window.__walk = walk; window.__walkLen = man.length;
 }
 
+let vw = null;
+async function loadVideo() {
+  let man; try { const r = await fetch(SC.manifest); if (!r.ok) throw new Error('HTTP ' + r.status); man = await r.json(); }
+  catch (e) { throw new Error(`Could not load the street manifest ${SC.manifest} (${e.message}).\nCheck your connection and reload.`); }
+  const base = SC.manifest.replace(/[^/]*$/, ''), tag = params.get('tex') || (isMobile ? '2k' : '4k');
+  const src = base + (SC.loop ? man.corner.video : man.video[tag] || man.video['2k']);
+  if (!SC.loop) BOUNDS.maxZ = man.nodes[man.nodes.length - 1].z;
+  vw = new VideoWalk(SC.loop ? { src, manifest: null, mode: 'loop', loop: [0.5, 29], fade: 1.0 } : { src, manifest: man });
+  $('loadmsg').textContent = 'Buffering street video…';
+  const ok = await vw.load((f, mb) => { $('fill').style.width = Math.round(100 * f) + '%'; $('loadmsg').textContent = `Buffering street video… ${Math.round(100 * f)}%`; $('loaddetail').textContent = `${mb.toFixed(0)} MB video (${tag}${SC.loop ? '' : ', streams while you walk'}) · ${SC.loop ? '360° corner' : man.length.toFixed(0) + ' m street'}`; });
+  if (!SC.loop) $('streetbar').hidden = false;
+  window.__video = vw; window.__walkLen = man.length;
+  if (!ok) { const t = $('tapstart'); t.hidden = false; t.onclick = async () => { if (await vw.start()) t.hidden = true; }; }
+}
+
 (async () => {
   try {
+    if (SC.renderer === 'video') { await loadVideo(); $('loader').hidden = true; window.__state.loaded = true; return; }
     if (SC.renderer === 'walk') { await loadWalk(); $('loader').hidden = true; window.__state.loaded = true; return; }
     const blob = await fetchWithProgress(ASSET_URL);
     $('loadmsg').textContent = 'Processing splats…'; $('fill').style.width = '100%';
@@ -192,6 +217,10 @@ renderer.setAnimationLoop(() => {
   pos.x = THREE.MathUtils.clamp(pos.x, BOUNDS.minX, BOUNDS.maxX);
   pos.z = THREE.MathUtils.clamp(pos.z, BOUNDS.minZ, BOUNDS.maxZ);
   pos.y = EYE_Y;
+  if (vw) {
+    const ni = vw.update(pos.z, dt); window.__state.node = ni;
+    if (!SC.loop) { $('sfill').style.width = (100 * pos.z / BOUNDS.maxZ).toFixed(1) + '%'; $('slabel').textContent = `${pos.z.toFixed(1)} m / ${BOUNDS.maxZ.toFixed(0)} m · video ${vw.currentTime.toFixed(1)} s`; }
+  }
   if (walk) {
     const ni = walk.update(pos.z);
     $('sfill').style.width = (100 * pos.z / BOUNDS.maxZ).toFixed(1) + '%';
@@ -199,5 +228,5 @@ renderer.setAnimationLoop(() => {
     window.__state.node = ni; if (!walk.loadingNeeded && $('nodestatus').textContent) $('nodestatus').textContent = '';
   }
   applyCamera();
-  if (walk?.render) walk.render(renderer, camera); else renderer.render(scene, camera);
+  if (vw && window.__state.loaded) vw.render(renderer, camera); else if (walk?.render) walk.render(renderer, camera); else renderer.render(scene, camera);
 });

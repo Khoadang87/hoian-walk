@@ -27,7 +27,7 @@ export class StreetWalk {
     const p = (async () => {
       const n = this.nodes[i]; const url = this.base + n.file; let res;
       try { res = await fetch(url); } catch (e) { throw new Error(`Network/CORS error loading street node ${i}: ${url}\n(${e.message})`); }
-      if (!res.ok) throw new Error(`Street node ${i} failed: HTTP ${res.status} (${url}). Run scripts/build-hoian-walk.sh to rebuild the private Hội An assets.`);
+      if (!res.ok) throw new Error(`Street node ${i} failed: HTTP ${res.status} (${url}).`);
       const total = +res.headers.get('content-length') || n.bytes || 0; const rd = res.body.getReader(); const parts = []; let got = 0;
       for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; if (reportProgress) this.onProgress?.(got, total, i); }
       const buf = await new Blob(parts).arrayBuffer(); const N = buf.byteLength / 9;
