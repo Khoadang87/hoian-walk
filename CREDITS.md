@@ -127,3 +127,6 @@ The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image →
 - Real people (and riders) are segmented with YOLO11s-seg (Ultralytics, AGPL-3.0), tracked automatically and cut out into per-stop alpha atlas videos.
 - The patches that erase them are machine-generated: optical-flow-warped neighbouring frames (OpenCV DIS) with big-LaMa (Apache-2.0) for leftovers. They can contain ghosts or smudges.
 - The cut-out people are real passers-by filmed in the source footage, not generated. After they leave, the AI-generated people from `assets/crowd/` appear.
+
+## `?gen=1` (one test stop)
+`assets/gen/s300.mp4` is AI-generated: 4 views of the real t=300 frame were animated with Grok Imagine image-to-video (2 chained 10 s generations each) and reprojected onto the real frame. Every moving person in it is invented, not a real passer-by.

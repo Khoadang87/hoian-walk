@@ -125,3 +125,17 @@ Limits:
 - The patch fill can ghost or smudge.
 - Seam-crossing people are skipped.
 - People can fade mid-street.
+
+### `?gen=1` test: AI-generated 360° motion at one stop (t=300 only)
+Try it with `?gen=1&t=300` (add `&debug=1` for the overlay), then stand still. The frozen frame snaps to t=300 and crossfades over 0.5 s into a 20 s generated 360° clip. When the clip ends it holds its last frame; it never loops. Anywhere else on the route, `?gen=1` does nothing.
+
+How the clip was made:
+- The stopped frame was rendered as 4 perspective views (110° wide, so neighbouring views overlap by 20°).
+- Each view was animated with image-to-video (Grok Imagine, 10 s), then chained: the last frame seeded a second 10 s generation.
+- The views were reprojected onto the sphere with feathered seams. Sky and nadir are the real frame and stay still.
+- Everything is packed into one H.264 file, `assets/gen/s300.mp4` (2560×1280, 24 fps).
+
+Known artefacts:
+- People crossing a seam can show as a double exposure.
+- People's feet can fade at the lower edge of the views. The ground directly below the camera is static.
+- The generated people are invented.
