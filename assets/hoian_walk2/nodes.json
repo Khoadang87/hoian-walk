@@ -1,0 +1,587 @@
+{
+"street": "Hoi An Old Town riverside street (Bach Dang St. area, approx.)",
+"source": "https://www.youtube.com/watch?v=C26CAyJkt4g",
+"length": 68.55,
+"depthLog": [
+-0.6931471805599453,
+4.605170185988092
+],
+"units": "metres (spacing ASSUMES 1.2 m/s walking); +Z along street, -Y up",
+"nodes": [
+{
+"id": 0,
+"z": 0.0,
+"x": 0,
+"frame": 0,
+"videoTime": 120.0
+},
+{
+"id": 1,
+"z": 0.658,
+"x": 0,
+"frame": 1,
+"videoTime": 120.5
+},
+{
+"id": 2,
+"z": 1.316,
+"x": 0,
+"frame": 2,
+"videoTime": 121.0
+},
+{
+"id": 3,
+"z": 2.275,
+"x": 0,
+"frame": 3,
+"videoTime": 121.5
+},
+{
+"id": 4,
+"z": 3.235,
+"x": 0,
+"frame": 4,
+"videoTime": 122.0
+},
+{
+"id": 5,
+"z": 4.195,
+"x": 0,
+"frame": 5,
+"videoTime": 122.5
+},
+{
+"id": 6,
+"z": 5.155,
+"x": 0,
+"frame": 6,
+"videoTime": 123.0
+},
+{
+"id": 7,
+"z": 5.864,
+"x": 0,
+"frame": 7,
+"videoTime": 123.5
+},
+{
+"id": 8,
+"z": 6.572,
+"x": 0,
+"frame": 8,
+"videoTime": 124.0
+},
+{
+"id": 9,
+"z": 7.532,
+"x": 0,
+"frame": 9,
+"videoTime": 124.5
+},
+{
+"id": 10,
+"z": 8.492,
+"x": 0,
+"frame": 10,
+"videoTime": 125.0
+},
+{
+"id": 11,
+"z": 9.316,
+"x": 0,
+"frame": 11,
+"videoTime": 125.5
+},
+{
+"id": 12,
+"z": 10.14,
+"x": 0,
+"frame": 12,
+"videoTime": 126.0
+},
+{
+"id": 14,
+"z": 11.146,
+"x": 0,
+"frame": 14,
+"videoTime": 127.0
+},
+{
+"id": 16,
+"z": 11.913,
+"x": 0,
+"frame": 16,
+"videoTime": 128.0
+},
+{
+"id": 17,
+"z": 12.504,
+"x": 0,
+"frame": 17,
+"videoTime": 128.5
+},
+{
+"id": 18,
+"z": 13.096,
+"x": 0,
+"frame": 18,
+"videoTime": 129.0
+},
+{
+"id": 23,
+"z": 13.75,
+"x": 0,
+"frame": 23,
+"videoTime": 131.5
+},
+{
+"id": 27,
+"z": 14.349,
+"x": 0,
+"frame": 27,
+"videoTime": 133.5
+},
+{
+"id": 30,
+"z": 14.969,
+"x": 0,
+"frame": 30,
+"videoTime": 135.0
+},
+{
+"id": 32,
+"z": 15.936,
+"x": 0,
+"frame": 32,
+"videoTime": 136.0
+},
+{
+"id": 36,
+"z": 16.553,
+"x": 0,
+"frame": 36,
+"videoTime": 138.0
+},
+{
+"id": 38,
+"z": 17.596,
+"x": 0,
+"frame": 38,
+"videoTime": 139.0
+},
+{
+"id": 39,
+"z": 18.327,
+"x": 0,
+"frame": 39,
+"videoTime": 139.5
+},
+{
+"id": 40,
+"z": 19.059,
+"x": 0,
+"frame": 40,
+"videoTime": 140.0
+},
+{
+"id": 41,
+"z": 20.019,
+"x": 0,
+"frame": 41,
+"videoTime": 140.5
+},
+{
+"id": 42,
+"z": 20.979,
+"x": 0,
+"frame": 42,
+"videoTime": 141.0
+},
+{
+"id": 43,
+"z": 21.939,
+"x": 0,
+"frame": 43,
+"videoTime": 141.5
+},
+{
+"id": 44,
+"z": 22.899,
+"x": 0,
+"frame": 44,
+"videoTime": 142.0
+},
+{
+"id": 45,
+"z": 23.859,
+"x": 0,
+"frame": 45,
+"videoTime": 142.5
+},
+{
+"id": 46,
+"z": 24.819,
+"x": 0,
+"frame": 46,
+"videoTime": 143.0
+},
+{
+"id": 47,
+"z": 25.779,
+"x": 0,
+"frame": 47,
+"videoTime": 143.5
+},
+{
+"id": 48,
+"z": 26.739,
+"x": 0,
+"frame": 48,
+"videoTime": 144.0
+},
+{
+"id": 49,
+"z": 27.699,
+"x": 0,
+"frame": 49,
+"videoTime": 144.5
+},
+{
+"id": 50,
+"z": 28.659,
+"x": 0,
+"frame": 50,
+"videoTime": 145.0
+},
+{
+"id": 51,
+"z": 29.619,
+"x": 0,
+"frame": 51,
+"videoTime": 145.5
+},
+{
+"id": 52,
+"z": 30.579,
+"x": 0,
+"frame": 52,
+"videoTime": 146.0
+},
+{
+"id": 53,
+"z": 31.539,
+"x": 0,
+"frame": 53,
+"videoTime": 146.5
+},
+{
+"id": 54,
+"z": 32.499,
+"x": 0,
+"frame": 54,
+"videoTime": 147.0
+},
+{
+"id": 55,
+"z": 33.364,
+"x": 0,
+"frame": 55,
+"videoTime": 147.5
+},
+{
+"id": 56,
+"z": 34.229,
+"x": 0,
+"frame": 56,
+"videoTime": 148.0
+},
+{
+"id": 57,
+"z": 35.189,
+"x": 0,
+"frame": 57,
+"videoTime": 148.5
+},
+{
+"id": 58,
+"z": 36.149,
+"x": 0,
+"frame": 58,
+"videoTime": 149.0
+},
+{
+"id": 59,
+"z": 37.109,
+"x": 0,
+"frame": 59,
+"videoTime": 149.5
+},
+{
+"id": 60,
+"z": 38.069,
+"x": 0,
+"frame": 60,
+"videoTime": 150.0
+},
+{
+"id": 61,
+"z": 39.029,
+"x": 0,
+"frame": 61,
+"videoTime": 150.5
+},
+{
+"id": 62,
+"z": 39.989,
+"x": 0,
+"frame": 62,
+"videoTime": 151.0
+},
+{
+"id": 63,
+"z": 40.795,
+"x": 0,
+"frame": 63,
+"videoTime": 151.5
+},
+{
+"id": 64,
+"z": 41.601,
+"x": 0,
+"frame": 64,
+"videoTime": 152.0
+},
+{
+"id": 66,
+"z": 42.256,
+"x": 0,
+"frame": 66,
+"videoTime": 153.0
+},
+{
+"id": 67,
+"z": 43.112,
+"x": 0,
+"frame": 67,
+"videoTime": 153.5
+},
+{
+"id": 68,
+"z": 43.969,
+"x": 0,
+"frame": 68,
+"videoTime": 154.0
+},
+{
+"id": 69,
+"z": 44.929,
+"x": 0,
+"frame": 69,
+"videoTime": 154.5
+},
+{
+"id": 70,
+"z": 45.889,
+"x": 0,
+"frame": 70,
+"videoTime": 155.0
+},
+{
+"id": 71,
+"z": 46.849,
+"x": 0,
+"frame": 71,
+"videoTime": 155.5
+},
+{
+"id": 72,
+"z": 47.809,
+"x": 0,
+"frame": 72,
+"videoTime": 156.0
+},
+{
+"id": 73,
+"z": 48.567,
+"x": 0,
+"frame": 73,
+"videoTime": 156.5
+},
+{
+"id": 74,
+"z": 49.326,
+"x": 0,
+"frame": 74,
+"videoTime": 157.0
+},
+{
+"id": 75,
+"z": 50.189,
+"x": 0,
+"frame": 75,
+"videoTime": 157.5
+},
+{
+"id": 76,
+"z": 51.053,
+"x": 0,
+"frame": 76,
+"videoTime": 158.0
+},
+{
+"id": 78,
+"z": 52.142,
+"x": 0,
+"frame": 78,
+"videoTime": 159.0
+},
+{
+"id": 79,
+"z": 53.102,
+"x": 0,
+"frame": 79,
+"videoTime": 159.5
+},
+{
+"id": 80,
+"z": 54.062,
+"x": 0,
+"frame": 80,
+"videoTime": 160.0
+},
+{
+"id": 81,
+"z": 55.022,
+"x": 0,
+"frame": 81,
+"videoTime": 160.5
+},
+{
+"id": 82,
+"z": 55.982,
+"x": 0,
+"frame": 82,
+"videoTime": 161.0
+},
+{
+"id": 83,
+"z": 56.641,
+"x": 0,
+"frame": 83,
+"videoTime": 161.5
+},
+{
+"id": 84,
+"z": 57.3,
+"x": 0,
+"frame": 84,
+"videoTime": 162.0
+},
+{
+"id": 85,
+"z": 57.871,
+"x": 0,
+"frame": 85,
+"videoTime": 162.5
+},
+{
+"id": 86,
+"z": 58.442,
+"x": 0,
+"frame": 86,
+"videoTime": 163.0
+},
+{
+"id": 88,
+"z": 59.185,
+"x": 0,
+"frame": 88,
+"videoTime": 164.0
+},
+{
+"id": 92,
+"z": 59.818,
+"x": 0,
+"frame": 92,
+"videoTime": 166.0
+},
+{
+"id": 94,
+"z": 60.694,
+"x": 0,
+"frame": 94,
+"videoTime": 167.0
+},
+{
+"id": 96,
+"z": 61.734,
+"x": 0,
+"frame": 96,
+"videoTime": 168.0
+},
+{
+"id": 98,
+"z": 62.826,
+"x": 0,
+"frame": 98,
+"videoTime": 169.0
+},
+{
+"id": 100,
+"z": 63.742,
+"x": 0,
+"frame": 100,
+"videoTime": 170.0
+},
+{
+"id": 102,
+"z": 64.611,
+"x": 0,
+"frame": 102,
+"videoTime": 171.0
+},
+{
+"id": 105,
+"z": 65.17,
+"x": 0,
+"frame": 105,
+"videoTime": 172.5
+},
+{
+"id": 107,
+"z": 65.878,
+"x": 0,
+"frame": 107,
+"videoTime": 173.5
+},
+{
+"id": 109,
+"z": 66.89,
+"x": 0,
+"frame": 109,
+"videoTime": 174.5
+},
+{
+"id": 111,
+"z": 67.951,
+"x": 0,
+"frame": 111,
+"videoTime": 175.5
+},
+{
+"id": 112,
+"z": 68.551,
+"x": 0,
+"frame": 112,
+"videoTime": 176.0
+},
+{
+"id": 115,
+"z": 68.551,
+"x": 0,
+"frame": 115,
+"videoTime": 177.5
+}
+],
+"note": "frames closer than 0.55 m to the previous kept one are dropped (walker pauses -> only time changes, people jump)"
+}

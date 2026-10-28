@@ -57,3 +57,14 @@ Run the tests: `npm i && npx playwright install chromium && node scripts/test.mj
   - People and the guide are frozen in place, and the same person can appear in more than one viewpoint.
   - Each viewpoint comes from one camera position, so areas hidden from that camera are empty and depth has seams. The image stretches if you move away from a viewpoint.
   - Rebuild with `scripts/build-hoian-walk.sh`. The video assets are not in the zip.
+
+### Update (27 Oct, evening): photo-mesh street walk (now the default; the old point version is at `?render=points`)
+- Each viewpoint is now the **full-resolution 360° photo** (1920×960 JPEG) wrapped onto a sphere that is pushed out by a depth map (16-bit log depth, 512×256 PNG). The GPU does the displacement. Phones use a 256×128 mesh, desktop uses 512×256. There are no point sprites any more.
+- **Edges:** triangles that cross a large depth jump are cut. Behind them sits a **background layer**: the depth is widened so foreground objects are pushed back, and the photo is **inpainted with OpenCV Telea** where the foreground was. Gaps therefore show filled imagery instead of black. This is classical inpainting, not generative AI. A local LaMa model was not used; see the limits below.
+- **Density:** 82 viewpoints at about 0.96 m spacing (median), up from 29 at 2.4 m. Every frame was processed, then frames less than 0.55 m from the previous one were dropped, because in those spots the walker paused and only the people moved.
+- **Blending:** the two viewpoints either side of you are rendered separately and blended continuously by distance. The blend is linear, there is no midpoint swap, and heading and position stay matched. The app loads the next 3 viewpoints ahead and 1 behind, and keeps 6 in memory on phones and 12 on desktop. If a viewpoint isn't ready yet, the last complete view stays on screen.
+- **Limits:**
+  - The view stretches and smears when you are far from a viewpoint or off-centre sideways.
+  - People who are close by, and moving people (they are captured at different moments), show ghosting during blends.
+  - The depth is AI-estimated from single images. The camera stick is visible at the bottom.
+  - The path is still assumed straight, and the walking speed is still assumed.

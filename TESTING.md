@@ -51,3 +51,24 @@ These are scripted key and touch inputs, not autoplay. Pixel diff = % of pixels 
 | Turn button Δyaw | 2.47 rad | 2.45 rad |
 | Reset vs start diff / no-input noise | 0 / 0 | 0 / 0 |
 Not tested: a real phone, real touch hardware, frame rate on a phone GPU, or memory pressure on an actual device.
+
+## Photo-mesh street walk (27 Oct, evening). Default renderer. Old point renderer: `?render=points`
+**Smoothness while walking** (`node scripts/smooth.mjs <tag>`): the camera steps 5 cm at a time from z=8 m to z=14 m (120 steps, about one frame each at walking pace). Each step is pixel-diffed against the previous one, as % of pixels changed. The script waits until the views around each position have loaded.
+| | Before (points, 29 views) | After (photo mesh, 82 views) |
+|---|---|---|
+| Desktop 960×540: max / 95th pct / median | 4.08 / 3.92 / 2.57 | **1.48 / 0.77 / 0.33** |
+| Emulated iPhone 13: max / 95th pct / median | 2.53 / 2.35 / 1.31 | **0.82 / 0.32 / 0.07** |
+| Diff on steps where the shown view changes | 3.34, 3.67 (desktop) | 0.20–0.34 (desktop), 0.05–0.18 (iPhone) |
+A first "after" run that used every frame (116 views) had spikes up to 13.9% where the walker had paused. Those frames are now dropped (see README).
+
+**Controls** (`node scripts/test.mjs walk`, SwiftShader software GPU):
+| | Desktop | Emulated iPhone |
+|---|---|---|
+| Hold W / joystick 7.5 s | 0→5.58 m, view 1→8 | 0→10.66 m, view 1→14 |
+| Keep pushing forward 12 s | 12.76 m, view 16 | 25.55 m, view 32 |
+| Sideways clamp | x = 1.5 | x = 1.5 |
+| Hold S at the start / W at the end | z = 0 / z = 68.55 (view 81 of 82) | same |
+| Reset vs start diff, no-input noise | 0 / 0 | 0 / 0 |
+| Yaw diffs 0/90/180/270 | 79.5 / 82.9 / 68.5 / 64.9 | 84.3 / 83.5 / 64.5 / 64.5 |
+On desktop, walking covered less distance in the same time because the software GPU runs at a low frame rate (about 18 fps when standing still at 640×360, less while two views are blending). Each frame's time step is capped at 0.25 s, so the walker moves less per second of real time. This does not reflect a real GPU.
+Not tested: a real phone or a real GPU frame rate, or memory use on an actual device.

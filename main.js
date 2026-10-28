@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import * as GS from '@mkkellogg/gaussian-splats-3d';
 import { StreetWalk } from './walk.js';
+import { PhotoWalk } from './photowalk.js';
 
 // ---------- config ----------
 const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const params = new URLSearchParams(location.search);
 const SCENES = {
-  walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk/nodes.json', renderer: 'walk', fov: 75,
+  walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk2/nodes.json', renderer: 'walk', fov: 75,
     // corridor: z = metres along the street (set from the manifest), x = ±1.5 m sideways. Eye at the 360° camera height.
     bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.6,
-    badge: '<b>Hội An Old Town riverside street (Bach Dang St. area): walk it yourself, PRIVATE TEST.</b> Approximation built from a 360° YouTube walk + AI depth: not a true scan. © video owner, not for redistribution.' },
+    badge: '<b>Hội An Old Town riverside street (Bach Dang St. area): walk it yourself (test).</b> Approximation built from a 360° YouTube walk + AI depth: not a true scan. © video owner; published with the owner\'s approval, still copyrighted.' },
   truck: { label: 'Truck (Tanks and Temples), real multi-view splat', assets: { mobile: 'assets/truck_mobile.splat', desktop: 'assets/truck_desktop.splat' },
     // COLMAP frame, -Y up. Box fitted to the captured lot around the truck.
     bounds: { minX: -9, maxX: 9, minZ: -9, maxZ: 9 }, eyeY: -0.2, start: { x: 0, z: 7.5, yaw: Math.PI, pitch: 0.05 }, speed: 2.5,
@@ -60,8 +61,10 @@ reset();
 $('reset').onclick = reset;
 $('quality').textContent = quality === 'desktop' ? 'Lighter scene' : 'Sharper scene';
 document.getElementById('badge').innerHTML = SC.badge + ' <a href="CREDITS.md" target="_blank">Credits</a>';
+if (SC.renderer === 'walk') document.getElementById('badge').appendChild(document.getElementById('streetbar'));
 $('scene').textContent = 'Scene: ' + { walk: 'Hội An walk', hoian: 'Hội An 360° corner', hoian1: 'Hội An photo', truck: 'Truck' }[NEXT[sceneKey]];
 $('scene').onclick = () => { params.set('scene', NEXT[sceneKey]); location.search = params.toString(); };
+if (SC.renderer === 'walk') $('quality').hidden = true;
 $('quality').onclick = () => { params.set('q', quality === 'desktop' ? 'mobile' : 'desktop'); location.search = params.toString(); };
 
 function applyCamera() {
@@ -139,10 +142,12 @@ function buildPoints(buf) {
 
 let walk = null;
 async function loadWalk() {
+  const WalkClass = params.get('render') === 'points' ? StreetWalk : PhotoWalk; // ?render=points = previous point-cloud version
+  if (WalkClass === StreetWalk) SC.manifest = 'assets/hoian_walk/nodes.json';
   let man; try { const r = await fetch(SC.manifest); if (!r.ok) throw new Error('HTTP ' + r.status); man = await r.json(); }
   catch (e) { throw new Error(`Could not load the street manifest ${SC.manifest} (${e.message}).\nThe private Hội An assets are not in the shared zip: run scripts/build-hoian-walk.sh, or check your network/CORS.`); }
   BOUNDS.maxZ = man.nodes[man.nodes.length - 1].z;
-  walk = new StreetWalk({ base: SC.manifest.replace(/[^/]*$/, ''), manifest: man, scene, isMobile,
+  walk = new WalkClass({ base: SC.manifest.replace(/[^/]*$/, ''), manifest: man, scene, isMobile,
     onProgress: (got, total, i) => { const pct = total ? Math.round(100 * got / total) : 0; $('fill').style.width = pct + '%'; $('loadmsg').textContent = `Loading street view ${i + 1}/${man.nodes.length}… ${pct}%`; $('loaddetail').textContent = `${(got / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB · ${man.nodes.length} views along ${man.length.toFixed(0)} m`; },
     onError: (e) => { if (!window.__state.loaded) return; $('nodestatus').textContent = '⚠ ' + e.message.split('\n')[0]; } });
   await walk.fetchNode(0, true); await walk.fetchNode(1, true);
@@ -169,7 +174,7 @@ async function loadWalk() {
 // ---------- loop ----------
 let last = performance.now();
 renderer.setAnimationLoop(() => {
-  const now = performance.now(); const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  const now = performance.now(); const dt = Math.min((now - last) / 1000, 0.25); last = now;
   let f = 0, s = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
@@ -193,5 +198,5 @@ renderer.setAnimationLoop(() => {
     window.__state.node = ni;
   }
   applyCamera();
-  renderer.render(scene, camera);
+  if (walk?.render) walk.render(renderer, camera); else renderer.render(scene, camera);
 });
