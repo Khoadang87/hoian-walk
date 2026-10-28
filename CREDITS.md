@@ -98,6 +98,7 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 ## Continuous walk (default scene, `walk.js`)
 - **Footage and street audio:** YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk), © the uploader, published with the project owner's approval.
   - The route is 600 s (10 min), from 15:45 to 25:45 of the source: Trần Phú street (past the pharmacy at 83 Trần Phú) into an assembly hall, likely the Fujian (Phúc Kiến) hall at 46 Trần Phú.
+  - **Default route:** 280.6–600 s of the encoded footage (source 20:25.6–25:45, about 5.3 min). The first 280 s ends in an editorial fade-to-black in the source, so it is only reachable with `?full=1`. A fresh brightness scan found no other fade in the default range; the source's next fade is at 25:45, right at the route end.
   - The ambience is 15:00–25:40 of the same video, so the sound you hear was recorded on this street.
 - **Real vs generated:**
   - All imagery and sound are real recordings. There is no generated, interpolated or AI-filled content in this scene.

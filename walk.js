@@ -28,7 +28,7 @@ const aWant = () => Math.min(Math.max(0, AOFF + pos()), 639);
 function aInit() { if (aud.node) return; try { const C = window.AudioContext || window.webkitAudioContext; const ctx = new C(); const src = ctx.createMediaElementSource(audio); aud.node = ctx.createGain(); aud.node.gain.value = 0; src.connect(aud.node).connect(ctx.destination); aud.ctx = ctx; ctx.resume?.(); } catch (e) { aud.node = null; } }
 function aTick(dt) { if (!soundOn || audio.paused) return; const drift = audio.currentTime - aWant(); if (!aud.res && Math.abs(drift) > (Math.abs(rate) > 0.6 ? 6 : 30)) { aud.res = true; aud.goal = 0; } if (aud.res && aud.g < 0.02) { audio.currentTime = aWant(); aud.res = false; aud.goal = AVOL; } aud.g += (aud.goal - aud.g) * Math.min(1, dt * (aud.goal < aud.g ? 4 : 1.6)); if (aud.node) { aud.node.gain.value = aud.g; if (aud.ctx.state === 'suspended') aud.ctx.resume(); } else audio.volume = Math.min(1, aud.g); }
 const mkTex = v => { const t = new THREE.VideoTexture(v); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
-let D = 0, rate = IDLE, target = IDLE, swapping = false, soundOn = false, frames = 0, lastAdv = performance.now(), quality = '4k', chunkSwaps = 0;
+let LO = 0, D = 0, rate = IDLE, target = IDLE, swapping = false, soundOn = false, frames = 0, lastAdv = performance.now(), quality = '4k', chunkSwaps = 0;
 // A chunked track: the route split into L-second files, played back to back with the next chunk preloaded in a 2nd element.
 class Track {
   constructor(urls, L, D) { this.urls = urls; this.L = L; this.D = D; this.els = [mkVideo(), mkVideo()]; this.tex = this.els.map(mkTex); this.ci = -1; this.k = 0; this.loaded = [-1, -1];
@@ -82,7 +82,7 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
 
 (async () => {
   try {
-    const r = await fetch(BASE + 'walk.json'); if (!r.ok) throw new Error('walk.json ' + r.status); const j = await r.json(); D = j.duration;
+    const r = await fetch(BASE + 'walk.json'); if (!r.ok) throw new Error('walk.json ' + r.status); const j = await r.json(); LO = params.has('full') ? 0 : (j.lo || 0) /* the source has an editorial fade at 277-280 s: the default route starts after it so the walk has no cut */; D = j.duration;
     const probe = document.createElement('video'), ua = navigator.userAgent, isSafari = /Safari/.test(ua) && !/Chrome|CriOS|Chromium|Android|FxiOS/.test(ua);
     const hevcOK = isSafari && probe.canPlayType('video/mp4; codecs="hvc1.1.6.L153.B0"') !== '';
     const c = navigator.connection || {}, weak = c.saveData || (c.downlink && c.downlink < 2.5) || (navigator.deviceMemory && navigator.deviceMemory <= 2);
@@ -102,7 +102,7 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     audio.src = BASE + j.audio;
     const prog = setInterval(() => { try { const v = fwdT.el, b = v.buffered.length ? v.buffered.end(0) - v.currentTime : 0; $('fill').style.width = Math.min(100, 15 + b / 2 * 85) + '%'; } catch (e) {} }, 200);
     $('loadmsg').textContent = 'Loading the street in ' + (quality === '2k5' ? '2.5K' : '4K') + '…';
-    await fwdT.seek(+(params.get('t') || j.start || 0)); fwdT.el.playbackRate = IDLE;
+    await fwdT.seek(Math.max(LO, +(params.get('t') || 0))); fwdT.el.playbackRate = IDLE;
     if (fwdT.el.error) throw new Error('video failed to load (' + (fwdT.el.error.code) + ')');
     clearInterval(prog); $('loader').hidden = true; document.body.classList.remove('loading'); $('hint').classList.add('fade'); window.__state.loaded = true; setSpin(true);
     if (!(await playSafe(fwdT.el))) showTap();
@@ -125,15 +125,16 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
       const idle = Math.abs(target) < 0.5;
       // direction: walking back uses the reversed track; idle keeps the current track (and ping-pongs at the ends)
       let want = rate < -0.05 ? revT : rate > 0.3 ? fwdT : active; if (idle) want = (pos() >= D - 0.5) ? active : fwdT;
-      if (want !== active && !(want === revT && pos() <= 0.2) && !(want === fwdT && pos() >= D - 0.2)) switchTo(want);
+      if (want !== active && !(want === revT && pos() <= LO + 0.2) && !(want === fwdT && pos() >= D - 0.2)) switchTo(want);
+      else if (active === revT && pos() <= LO + 0.1) { if (!active.el.paused) active.el.pause(); $('nodestatus').textContent = 'Start of the street · tap ↺ Turn around'; $('turnL').classList.add('pulse'); }
       else { const v = active.el, pr = Math.max(0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
-        { const ae = pos() >= D - 0.5, as = pos() <= 0.5, st = $('nodestatus'); if ((ae && view.face > 0) || (as && view.face < 0)) { st.textContent = (ae ? 'Inside the hall — end of the walk' : 'Start of the street') + ' · tap ↺ Turn around'; $('turnL').classList.add('pulse'); } else { $('turnL').classList.remove('pulse'); if (ae || as) st.textContent = 'Turned around · push up / W to walk'; else if (/Turn(ed)? around/.test(st.textContent)) st.textContent = ''; } } }
+        { const ae = pos() >= D - 0.5, as = pos() <= LO + 0.5, st = $('nodestatus'); if ((ae && view.face > 0) || (as && view.face < 0)) { st.textContent = (ae ? 'Inside the hall — end of the walk' : 'Start of the street') + ' · tap ↺ Turn around'; $('turnL').classList.add('pulse'); } else { $('turnL').classList.remove('pulse'); if (ae || as) st.textContent = 'Turned around · push up / W to walk'; else if (/Turn(ed)? around/.test(st.textContent)) st.textContent = ''; } } }
     }
     view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
-    const adv = now - lastAdv < 1500 || pos() >= D - 0.5 || pos() <= 0.5; $('live').textContent = adv ? (Math.abs(rate) > 0.5 ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
-    $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = (pos() / D * 100) + '%';
+    const edge = pos() >= D - 0.5 || pos() <= LO + 0.5, adv = now - lastAdv < 1500 || edge; $('live').textContent = adv ? (Math.abs(rate) > 0.5 && !edge ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
+    $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = Math.max(0, (pos() - LO) / (D - LO) * 100) + '%';
     renderer.render(scene, camera); });
   setInterval(() => { if (!window.__state.loaded || swapping) return; const v = active.el; if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 2500 && !active.nudged) { active.nudged = true; v.currentTime = v.currentTime + 0.02; playSafe(v); lastAdv = performance.now(); return; } if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 6000) { active.nudged = false; setSpin(true); $('nodestatus').textContent = 'Reconnecting…'; const p = pos(); active.loaded = [-1, -1]; active.seek(active === fwdT ? p : D - p).then(() => playSafe(active.el)); lastAdv = performance.now(); }
     else if (v.paused && !active.atEnd() && $('tapstart').hidden && !soundOn) showTap(); }, 1000);

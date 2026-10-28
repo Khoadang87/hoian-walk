@@ -3,7 +3,9 @@
 **Live:** https://khoadang87.github.io/hoian-walk/
 
 ## Current default: one continuous 10-minute walk (`walk.js`)
-A real 360° walking video, played as you walk. You start on Trần Phú street in Hội An old town and walk up to 10 minutes through the crowd into an assembly hall (likely the Fujian/Phúc Kiến hall at 46 Trần Phú). There are no arrows, no scene switches and no cuts. Source and licences are in CREDITS.md.
+A real 360° walking video, played as you walk. You start on Trần Phú street in Hội An old town and walk about 5 minutes (at normal pace) through the crowd into an assembly hall (likely the Fujian/Phúc Kiến hall at 46 Trần Phú). There are no arrows, no scene switches and no cuts.
+
+**Route change (Oct 28, 3:30 AM):** the earlier 10-minute route turned out to contain an editorial fade-to-black at 4:37–4:40. It sits between the riverside part and Trần Phú street, and a scene-cut detector does not catch fades. The default route now starts just after the fade, at 280.6 s of the encoded footage (source 20:25.6), and runs to 600 s (source 25:45). That is the longest fade-free stretch that includes entering the building. The full 10 minutes, fade included, is still at `?full=1`. Source and licences are in CREDITS.md.
 
 **Controls**
 - **Phone:** push the stick up to walk; push it further for a jog. Pull it down to turn around. Push it sideways to sway left or right (up to 0.6 m). Drag or turn the phone to look around.
@@ -18,7 +20,7 @@ A real 360° walking video, played as you walk. You start on Trần Phú street 
 - **Parallax:** swaying sideways moves the camera over a simple ground-plane proxy (the lower half of the sphere flattened onto a floor 1.6 m below). This is approximate, not real depth.
 - **Sound:** the real street sound from the same video, kept within a few seconds of where you are. When it drifts too far, it fades out briefly and resyncs. It fades in on the first tap, and pauses when the tab is hidden.
 
-**URL options:** `?t=<seconds>` start position, `?idle=<rate>`, `?ry=<rad>` sphere yaw, `?scene=spots` (older 360° spot tour), `?scene=game` (older 3D game street).
+**URL options:** `?full=1` (10-min route including the fade), `?t=<seconds>` start position, `?idle=<rate>`, `?ry=<rad>` sphere yaw, `?scene=spots` (older 360° spot tour), `?scene=game` (older 3D game street).
 
 **Run locally:** `python3 -m http.server 8090`, then open http://localhost:8090/.
 
