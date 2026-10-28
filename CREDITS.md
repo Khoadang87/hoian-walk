@@ -130,3 +130,6 @@ The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image →
 
 ## `?gen=1` (one test stop)
 `assets/gen/s300.mp4` is AI-generated: 4 views of the real t=300 frame were animated with Grok Imagine image-to-video (2 chained 10 s generations each) and reprojected onto the real frame. Every moving person in it is invented, not a real passer-by.
+
+## Road overlay (w3)
+`assets/road/asphalt.jpg` (18 KB) is cut from the same source walk footage (a top-down reprojection of the asphalt), flattened and made seamless with a scripted blend. Not AI-generated.

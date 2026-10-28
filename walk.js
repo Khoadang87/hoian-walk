@@ -73,6 +73,30 @@ const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyr
 // nadir cap (w1): the source's camera-carrier/stitch area under the lens warps and flows like water while walking; cover it with a stable, soft ground-toned disc that fades out by ~48 deg below the horizon
 const OLDV = params.get('lowmask') === '0', PORT = () => innerWidth < innerHeight; // w2: portrait = narrower vertical FOV, gaze ~7 deg up and a tighter look-down limit, so the smeared near road takes only the bottom of the screen (?lowmask=0 = old framing)
 const PMIN = () => OLDV ? 0.75 : PORT() ? 0.4 : 0.6, GUP = () => OLDV ? 0 : PORT() ? 0.12 : 0.07;
+// w3 road: the near-field road in the source smears/flows like water (low-res stitched 360 + compression). Overlay a sharp, stable asphalt plane (texture cut from this same footage, made seamless), colour-matched live to the video's road, scrolled with walking so parallax is right; feathered into the video from ~13 deg below the horizon. ?road=0 disables.
+const road = (() => { if (params.get('road') === '0') return null;
+  const tx = new THREE.TextureLoader().load('assets/road/asphalt.jpg?v=w3'); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const m = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, uniforms: { map: { value: tx }, off: { value: 0 }, gain: { value: new THREE.Color(1, 1, 1) }, cam: { value: new THREE.Vector3() } },
+    vertexShader: 'varying vec3 wp; void main(){ vec4 w = modelMatrix * vec4(position,1.0); wp = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform sampler2D map; uniform float off; uniform vec3 gain; uniform vec3 cam; varying vec3 wp;
+      void main(){ vec2 g = vec2(wp.x, wp.z + off); vec3 a = texture2D(map, g / 1.4).rgb; vec3 b = texture2D(map, mat2(0.8,-0.6,0.6,0.8) * g / 2.3 + 0.37).rgb;
+        vec3 c = mix(a, b, 0.35 + 0.3 * texture2D(map, g / 9.0).g) * gain;
+        float r = length(wp.xz - cam.xz); float dep = atan(1.6, r); float al = smoothstep(0.23, 0.40, dep) * (1.0 - smoothstep(2.0, 2.9, abs(wp.x)));
+        gl_FragColor = vec4(c, al);
+        #include <colorspace_fragment>
+      }` });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 12).rotateX(-Math.PI / 2), m); mesh.position.y = -1.6; mesh.renderOrder = 5; scene.add(mesh);
+  const c = document.createElement('canvas'); c.width = c.height = 8; const cx = c.getContext('2d', { willReadFrequently: true }); const rc = new THREE.Raycaster();
+  const texMean = new THREE.Color().setRGB(87 / 255, 79 / 255, 76 / 255, THREE.SRGBColorSpace), tgt = new THREE.Color(1, 1, 1);
+  return { mesh, m, cx, rc, texMean, tgt, last: 0 }; })();
+const ROAD_MPS = +(params.get('roadspeed') ?? 1.3); // metres of road per route-second (normal walking)
+function roadUpd(now) { if (!road) return; const u = road.m.uniforms; u.cam.value.copy(camera.position); road.mesh.position.x = 0; road.mesh.position.z = camera.position.z;
+  u.off.value = (-pos() * ROAD_MPS) % 1400 - road.mesh.position.z * 0; // ground slides toward you as you walk forward
+  if (now - road.last > 700) { road.last = now; try { const im = mat.map && mat.map.image; const W = im && (im.videoWidth || im.width), H = im && (im.videoHeight || im.height);
+    if (W) { const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0; f.normalize(); f.y = -0.42; road.rc.set(new THREE.Vector3(), f.normalize()); const hit = road.rc.intersectObject(sphere)[0];
+      if (hit && hit.uv) { const sx = hit.uv.x * W, sy = (1 - hit.uv.y) * H; road.cx.drawImage(im, sx - W * 0.012, sy - H * 0.02, W * 0.024, H * 0.04, 0, 0, 8, 8); const d = road.cx.getImageData(0, 0, 8, 8).data; let r = 0, g = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+        const col = new THREE.Color().setRGB(r / 16320, g / 16320, b / 16320, THREE.SRGBColorSpace); road.tgt.setRGB(col.r / road.texMean.r, col.g / road.texMean.g, col.b / road.texMean.b); } } } catch (_) {} }
+  u.gain.value.lerp(road.tgt, 0.04); }
 const nadir = (() => { if (params.get('nadir') === '0') return null;
   const m = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, uniforms: { col: { value: new THREE.Color(0.32, 0.30, 0.29) } },
     vertexShader: 'varying vec3 vp; void main(){ vp = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
@@ -173,7 +197,7 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + GUP() + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
     { const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); if (eu.x < -PMIN()) { eu.x = -PMIN(); camera.quaternion.setFromEuler(eu); } } // clamp final pitch (gyro included) so the stitched nadir never fills the screen
-    nadirUpd(now);
+    nadirUpd(now); roadUpd(now);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
     const edge = pos() >= HI - 0.5 || pos() <= LO + 0.5, adv = now - lastAdv < 1500 || edge; $('live').textContent = adv ? (Math.abs(rate) > 0.5 && !edge ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
     $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = Math.max(0, (pos() - LO) / (HI - LO) * 100) + '%';
@@ -185,4 +209,4 @@ function showTap() { const t = $('tapstart'); t.textContent = '🔊 Tap to start
 /* Public hooks for custom UI (buttons etc.). Example: HoianWalk.setWalk(true) while a button is held.
    setWalk(on|null): walk forward like the stick; turnAround(); faceAhead(); state() -> { pos, lo, hi, facing, standing, sound } */
 window.HoianWalk = { setGyro: on => setGyro(on), gyro: () => gyroWant, setWalk: on => { btnTarget = on ? 'walk' : null; }, turnAround: () => turnAround(), faceAhead: () => { view.yaw = 0; view.pitch = 0; }, state: () => ({ pos: pos(), lo: LO, hi: HI, facing: view.face > 0 ? 'forward' : 'back', standing: !!view.standing, sound: soundOn, rate, joy: joy.y, swapping, base: active ? (active === fwdT ? 'fwd' : 'rev') + ' rs' + active.el.readyState + (active.el.paused ? 'P' : '>') : '-' }) };
-window.__test = { look: () => ({ yaw: view.yaw, pitch: view.pitch, gyro: !!view.gyro }), nadir: () => nadir && nadir.m.uniforms.col.value.getHexString(), aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, setPitch: p => view.pitch = p, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
+window.__test = { road: () => road && { gain: road.m.uniforms.gain.value.toArray(), off: road.m.uniforms.off.value }, look: () => ({ yaw: view.yaw, pitch: view.pitch, gyro: !!view.gyro }), nadir: () => nadir && nadir.m.uniforms.col.value.getHexString(), aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, setPitch: p => view.pitch = p, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
