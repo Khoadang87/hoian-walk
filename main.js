@@ -7,7 +7,7 @@ import { PhotoWalk } from './photowalk.js';
 const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const params = new URLSearchParams(location.search);
 const SCENES = {
-  walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk2/nodes.json', renderer: 'walk', fov: 75,
+  walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk3/nodes.json', renderer: 'walk', fov: 75,
     // corridor: z = metres along the street (set from the manifest), x = ±1.5 m sideways. Eye at the 360° camera height.
     bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.6,
     badge: '<b>Hội An Old Town riverside street (Bach Dang St. area): walk it yourself (test).</b> Approximation built from a 360° YouTube walk + AI depth: not a true scan. © video owner; published with the owner\'s approval, still copyrighted.' },
@@ -144,6 +144,7 @@ let walk = null;
 async function loadWalk() {
   const WalkClass = params.get('render') === 'points' ? StreetWalk : PhotoWalk; // ?render=points = previous point-cloud version
   if (WalkClass === StreetWalk) SC.manifest = 'assets/hoian_walk/nodes.json';
+  if (params.get('render') === 'mesh') SC.manifest = 'assets/hoian_walk2/nodes.json'; // previous depth-mesh version
   let man; try { const r = await fetch(SC.manifest); if (!r.ok) throw new Error('HTTP ' + r.status); man = await r.json(); }
   catch (e) { throw new Error(`Could not load the street manifest ${SC.manifest} (${e.message}).\nThe private Hội An assets are not in the shared zip: run scripts/build-hoian-walk.sh, or check your network/CORS.`); }
   BOUNDS.maxZ = man.nodes[man.nodes.length - 1].z;

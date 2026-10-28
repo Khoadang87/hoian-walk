@@ -68,3 +68,10 @@ Run the tests: `npm i && npx playwright install chromium && node scripts/test.mj
   - People who are close by, and moving people (they are captured at different moments), show ghosting during blends.
   - The depth is AI-estimated from single images. The camera stick is visible at the bottom.
   - The path is still assumed straight, and the walking speed is still assumed.
+
+### Update v3 (27 Oct, 7 PM): real 4K photos, no warping (default). Older versions: `?render=mesh` (depth mesh), `?render=points`
+- **Source:** the same YouTube video, now taken from its **2160p (3840×2160) equirectangular stream** instead of 1080p. Frames are resampled to 4096×2048. Desktop loads the 4096 JPEGs (about 570 KB each) and phones load 2048 versions (about 270 KB). Force one with `?tex=2k` or `?tex=4k`.
+- **No more warping:** the per-pixel AI depth mesh, which caused the tearing, smearing, and grey filled-in blobs, has been replaced by a smooth **"street box"** shape. The photo is projected onto a ground plane 2 m below the camera, onto two building-front planes (left and right distances fitted from the AI depth and smoothed over 11 views; median 11.2 m left, 8.8 m right), and onto a distant sphere. Near a viewpoint you see the photo almost exactly as it was taken. Depth shifts only subtly as you move.
+- **Less ghosting:** the nearest photo is shown on its own for 60% of the gap between two viewpoints. The two photos blend only in the middle 40%, with a smooth curve.
+- **Camera stick:** the uploader had already covered it with a clean patch of road in the source video, so nothing needed removing.
+- Every pixel shown is a real video frame. **No AI-generated imagery is used.** Inpainting is no longer needed because the smooth shape leaves no holes.

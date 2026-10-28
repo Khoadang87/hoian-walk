@@ -17,6 +17,16 @@ void main(){ vUv = uv; float L = dlog(uv);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(dir * d, 1.0); }`;
 const FRAG = `precision highp float; uniform sampler2D col; uniform float cut; varying vec2 vUv; varying float vEdge;
 void main(){ if (vEdge > cut) discard; gl_FragColor = texture2D(col, vUv); }`;
+// v3 "street box" proxy: the real photo is projected onto a smooth ground plane + two facade planes + far sphere.
+// No per-pixel depth, so nothing tears or smears; parallax is subtle and the photo looks as captured near each node.
+const PVERT = `precision highp float; uniform vec3 box; varying vec2 vUv;
+void main(){ vUv = uv; float lon = (uv.x - 0.5) * 6.2831853; float lat = (0.5 - uv.y) * 3.1415926;
+  vec3 d = vec3(sin(lon) * cos(lat), -sin(lat), cos(lon) * cos(lat)); float t = 60.0;
+  if (d.y > 0.001) t = min(t, box.x / d.y);                         // ground (-Y up, so +y is down)
+  float tw = d.x > 0.001 ? box.z / d.x : (d.x < -0.001 ? box.y / -d.x : 1e9);
+  if (tw < t && d.y * tw > -9.0) t = tw;                               // facades up to ~9 m above the eye
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(d * t, 1.0); }`;
+const PFRAG = `precision highp float; uniform sampler2D col; varying vec2 vUv; void main(){ gl_FragColor = texture2D(col, vUv); }`;
 const COMP_V = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 const COMP_F = `uniform sampler2D A; uniform sampler2D B; uniform float t; varying vec2 vUv;
 void main(){ gl_FragColor = mix(texture2D(A, vUv), texture2D(B, vUv), t);
@@ -35,9 +45,12 @@ function sphereGeo(w, h) {
 export class PhotoWalk {
   constructor({ base, manifest, isMobile, onProgress, onError }) {
     Object.assign(this, { base, manifest, onProgress, onError });
-    this.nodes = manifest.nodes; this.lg = new THREE.Vector2(...manifest.depthLog);
+    this.nodes = manifest.nodes; this.lg = new THREE.Vector2(...(manifest.depthLog || [0, 1]));
     this.cache = new Map(); this.pending = new Map(); this.maxCache = isMobile ? 6 : 12; this.shown = []; this.lastGood = null;
-    const [w, h] = isMobile ? [256, 128] : [512, 256]; this.geo = sphereGeo(w, h); this.step = new THREE.Vector2(1 / w, 1 / h);
+    const [w, h] = isMobile ? [256, 128] : [512, 256];
+    this.texTag = new URLSearchParams(location.search).get('tex') || (isMobile ? '2k' : '4k'); // per-device texture size
+    this.blendWin = manifest.proxy ? 0.3 : 0.5; // proxy mode: show the nearest photo as-is, blend only in the middle 40%
+    this.geo = sphereGeo(w, h); this.step = new THREE.Vector2(1 / w, 1 / h);
     this.rtA = null; this.rtB = null; this.t = 0;
     this.comp = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ vertexShader: COMP_V, fragmentShader: COMP_F, uniforms: { A: { value: null }, B: { value: null }, t: { value: 0 } }, depthTest: false, depthWrite: false }));
     this.compScene = new THREE.Scene(); this.compScene.add(this.comp); this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -58,6 +71,15 @@ export class PhotoWalk {
     if (this.pending.has(i)) return this.pending.get(i);
     const p = (async () => {
       const n = this.nodes[i], f = this.base + 'n' + String(n.id).padStart(3, '0'), acc = { got: 0, total: 0 };
+      if (n.L !== undefined) { // v3 proxy mode
+        const bm = await this.fetchBitmap(f + '_' + this.texTag + '.jpg', i, report, acc);
+        const t = new THREE.Texture(bm); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 8;
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true;
+        const mat = new THREE.ShaderMaterial({ vertexShader: PVERT, fragmentShader: PFRAG, side: THREE.DoubleSide, uniforms: { col: { value: t }, box: { value: new THREE.Vector3(n.h, n.L, n.R) } } });
+        const mesh = new THREE.Mesh(this.geo, mat); mesh.frustumCulled = false; const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8fa6bd);
+        mesh.position.set(n.x, 0, n.z); scene.add(mesh); const node = { scene, textures: [t], materials: [mat] };
+        this.cache.set(i, node); this.pending.delete(i); this.evict(); return node;
+      }
       const [c, bgc, d] = await Promise.all([this.fetchBitmap(f + '.jpg', i, report, acc), this.fetchBitmap(f + '_bg.jpg', i, report, acc), this.fetchBitmap(f + '_d.png', i, report, acc)]);
       const tex = (bm, srgb, nearest) => { const t = new THREE.Texture(bm); t.flipY = false; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = THREE.RepeatWrapping;
         t.generateMipmaps = !nearest; t.minFilter = nearest ? THREE.NearestFilter : THREE.LinearMipmapLinearFilter; t.magFilter = nearest ? THREE.NearestFilter : THREE.LinearFilter; t.anisotropy = 4; t.needsUpdate = true; return t; };
@@ -81,6 +103,7 @@ export class PhotoWalk {
     const N = this.nodes.length; let a = 0; while (a < N - 2 && z > this.nodes[a + 1].z) a++;
     const b = Math.min(a + 1, N - 1); const span = this.nodes[b].z - this.nodes[a].z;
     let t = span > 0 ? THREE.MathUtils.clamp((z - this.nodes[a].z) / span, 0, 1) : 0;
+    if (this.blendWin < 0.5) t = THREE.MathUtils.smoothstep(t, this.blendWin, 1 - this.blendWin);
     for (const k of [a, b, a + 2, a - 1, a + 3]) if (k >= 0 && k < N) this.fetchNode(k, false).catch(() => {});
     let A = this.cache.get(a), B = this.cache.get(b);
     if (!A && B) { A = B; t = 0; } else if (A && !B) t = 0;

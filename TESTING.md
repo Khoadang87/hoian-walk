@@ -72,3 +72,19 @@ A first "after" run that used every frame (116 views) had spikes up to 13.9% whe
 | Yaw diffs 0/90/180/270 | 79.5 / 82.9 / 68.5 / 64.9 | 84.3 / 83.5 / 64.5 / 64.5 |
 On desktop, walking covered less distance in the same time because the software GPU runs at a low frame rate (about 18 fps when standing still at 640×360, less while two views are blending). Each frame's time step is capped at 0.25 s, so the walker moves less per second of real time. This does not reflect a real GPU.
 Not tested: a real phone or a real GPU frame rate, or memory use on an actual device.
+
+## v3 4K photo walk (27 Oct, 7 PM). Default
+**Smoothness** (same 5 cm-step test from z=8 to 14 m; % of pixels changed per step):
+| | v2 depth mesh | v3 4K photo |
+|---|---|---|
+| Desktop max / p95 / median | 1.48 / 0.77 / 0.33 | 13.93 / 12.82 / 8.74 (same view with 2K photos: 12.18 / 10.67 / 7.29) |
+| iPhone max / p95 / median | 0.82 / 0.32 / 0.07 | 9.57 / 4.55 / 1.50 |
+Higher numbers here do **not** mean pops:
+- In v3 the scene now moves at the right scale. The ground plane is 2 m below the eye, whereas v2's depth was roughly 3–4× too far away, so its parallax was tiny. The photos are also much sharper. Both make every 5 cm step change more pixels; the desktop baseline is about 8% on every step.
+- The blends between photos add a bump of roughly +3–5% on top of that baseline, spread over several steps (a max of 13.9% vs an 8–9% baseline). There is no one-frame jump.
+
+**Controls** (test.mjs walk):
+- **Distance:** desktop walked 7.58 m in 7.5 s (view 1 → 10) and 18.61 m in total. The iPhone walked 10.76 m (view 1 → 14) and 25.83 m in total.
+- **Boundaries:** sideways movement stops at x=1.5, and both ends stop you (0 and 68.55 m).
+- **Reset:** reset matches the start (0% diff), with 0% noise and no console errors.
+- **Looking around:** yaw diffs were 61–86%.
