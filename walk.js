@@ -8,6 +8,8 @@ const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|
 const BASE = 'assets/walk/';
 const showError = (m) => { $('loader').hidden = true; const e = $('error'); e.hidden = false; e.textContent = m; console.error('[viewer-error]', m); window.__viewerError = m; };
 window.__state = { loaded: false };
+/* the camera carrier occupies ~±18° around dead-behind, below the horizon: stop the turn far enough off-axis that he is outside the screen half-width */
+const TURN_OFF = () => Math.min(0.95, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) + 0.42);
 const IDLE = +(params.get('idle') || 0.4), WALK = 1.0, JOG = 1.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); $('app').appendChild(renderer.domElement);
@@ -122,10 +124,10 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
       else { const v = active.el, pr = Math.max(0.0625, Math.min(3, Math.abs(rate))); if (Math.abs(v.playbackRate - pr) > 0.02) v.playbackRate = pr; active.tick(pr);
         { const ae = pos() >= D - 0.5, as = pos() <= 0.5, st = $('nodestatus'); if ((ae && view.face > 0) || (as && view.face < 0)) { st.textContent = (ae ? 'Inside the hall — end of the walk' : 'Start of the street') + ' · tap ↺ Turn around'; $('turnL').classList.add('pulse'); } else { $('turnL').classList.remove('pulse'); if (ae || as) st.textContent = 'Turned around · push up / W to walk'; else if (/Turn(ed)? around/.test(st.textContent)) st.textContent = ''; } } }
     }
-    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - 0.5 /* 29° off dead-behind: keeps the camera carrier out of a phone-width view */; view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / (Math.PI - 0.5) /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
+    view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
-    const adv = now - lastAdv < 1500 || pos() >= D - 0.5 || pos() <= 0.5; $('live').textContent = adv ? (Math.abs(rate) > 0.5 ? (rate > 0 ? '● walking' : '● walking back') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
+    const adv = now - lastAdv < 1500 || pos() >= D - 0.5 || pos() <= 0.5; $('live').textContent = adv ? (Math.abs(rate) > 0.5 ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
     $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = (pos() / D * 100) + '%';
     renderer.render(scene, camera); });
   setInterval(() => { if (!window.__state.loaded || swapping) return; const v = active.el; if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 2500 && !active.nudged) { active.nudged = true; v.currentTime = v.currentTime + 0.02; playSafe(v); lastAdv = performance.now(); return; } if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 6000) { active.nudged = false; setSpin(true); $('nodestatus').textContent = 'Reconnecting…'; const p = pos(); active.loaded = [-1, -1]; active.seek(active === fwdT ? p : D - p).then(() => playSafe(active.el)); lastAdv = performance.now(); }
