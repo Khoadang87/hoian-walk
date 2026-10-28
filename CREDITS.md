@@ -79,3 +79,8 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 - Corner scene: one static plate = temporal median of the tripod 360° video (no video playback, no interpolation).
 - Pedestrians, scooters and bikes passing by are **generated** low-poly three.js figures (traffic.js), not real people. Each one gets random build, clothing, hat/helmet, colours, speed, lane, direction and spawn timing.
 - Walking still plays the real video (real people visible). No audio.
+
+## Real passers-by (Oct 27, 2026, replaces the procedural 3D figures)
+- The pedestrians, cyclists and the scooter rider that pass while you stand are **real people cut out of the same riverside 360° walk video** (https://www.youtube.com/watch?v=C26CAyJkt4g, © video owner, used with the owner's approval). No generated people and no stock clips are used.
+- Pipeline (scripts/sprites/): Ultralytics YOLO11n + ByteTrack to track people/bikes/scooters in the 4K video, YOLO11s-seg masks on full-res crops, size-normalized 2-4 s clips at 12.5 fps packed into RGBA WebP atlases (11 clips, ~1.7 MB total). Models: Ultralytics YOLO11 (AGPL-3.0) run offline; only the resulting images ship.
+- Each passer-by is a camera-facing billboard with a soft contact shadow, random clip / start frame / playback rate / mirroring / lane / scale / speed / direction / timing; the same clip is never on screen twice at once.

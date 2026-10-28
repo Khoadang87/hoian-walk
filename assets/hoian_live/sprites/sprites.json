@@ -1,0 +1,182 @@
+{
+ "source": "https://www.youtube.com/watch?v=C26CAyJkt4g",
+ "note": "Real people cut out of the 360 walk footage (YOLO11s-seg masks)",
+ "clips": [
+  {
+   "file": "p0337.webp",
+   "kind": "walk",
+   "facing": "back",
+   "n": 50,
+   "cols": 12,
+   "rows": 5,
+   "w": 168,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    273,
+    371
+   ],
+   "kb": 166
+  },
+  {
+   "file": "p0046.webp",
+   "kind": "walk",
+   "facing": "back",
+   "n": 46,
+   "cols": 15,
+   "rows": 4,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    30,
+    128
+   ],
+   "kb": 157
+  },
+  {
+   "file": "p0084.webp",
+   "kind": "walk",
+   "facing": "back",
+   "n": 34,
+   "cols": 15,
+   "rows": 3,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    53,
+    119
+   ],
+   "kb": 106
+  },
+  {
+   "file": "p0331.webp",
+   "kind": "walk",
+   "facing": "front",
+   "n": 34,
+   "cols": 15,
+   "rows": 3,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    262,
+    328
+   ],
+   "kb": 139
+  },
+  {
+   "file": "p0414.webp",
+   "kind": "walk",
+   "facing": "back",
+   "n": 43,
+   "cols": 15,
+   "rows": 3,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    337,
+    435
+   ],
+   "kb": 158
+  },
+  {
+   "file": "p0215.webp",
+   "kind": "walk",
+   "facing": "front",
+   "n": 46,
+   "cols": 15,
+   "rows": 4,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    172,
+    262
+   ],
+   "kb": 179
+  },
+  {
+   "file": "p0222.webp",
+   "kind": "walk",
+   "facing": "front",
+   "n": 42,
+   "cols": 15,
+   "rows": 3,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    178,
+    260
+   ],
+   "kb": 179
+  },
+  {
+   "file": "p0428.webp",
+   "kind": "walkbike",
+   "facing": "left",
+   "n": 23,
+   "cols": 8,
+   "rows": 3,
+   "w": 232,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    353,
+    397
+   ],
+   "kb": 164
+  },
+  {
+   "file": "p0420.webp",
+   "kind": "bike",
+   "facing": "front",
+   "n": 34,
+   "cols": 15,
+   "rows": 3,
+   "w": 136,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    342,
+    428
+   ],
+   "kb": 155
+  },
+  {
+   "file": "p0763.webp",
+   "kind": "bike",
+   "facing": "front",
+   "n": 30,
+   "cols": 11,
+   "rows": 3,
+   "w": 184,
+   "h": 224,
+   "fps": 12.5,
+   "srcFrames": [
+    670,
+    768
+   ],
+   "kb": 171
+  },
+  {
+   "file": "p0006.webp",
+   "kind": "scooter",
+   "facing": "left",
+   "n": 24,
+   "cols": 7,
+   "rows": 4,
+   "w": 264,
+   "h": 168,
+   "fps": 12.5,
+   "srcFrames": [
+    16,
+    78
+   ],
+   "kb": 162
+  }
+ ]
+}

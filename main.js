@@ -12,10 +12,10 @@ const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platfo
 const SCENES = {
   live: { label: 'Hội An LIVE street walk', manifest: 'assets/hoian_live/live.json', renderer: 'video', fov: 75,
     bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.2,
-    badge: '<b>Hội An Old Town riverside street: LIVE 360° video you walk yourself (test).</b> Walk forward/back to move through the real video. Stop and the street settles to a clean view of the spot while independent procedural pedestrians and scooters pass by. From a 360° YouTube walk, © video owner, published with the owner\'s approval.' },
+    badge: '<b>Hội An Old Town riverside street: LIVE 360° video you walk yourself (test).</b> Walk forward/back to move through the real video. Stop and the street settles to a clean view of the spot while real pedestrians, cyclists and a scooter rider (cut out of the same footage) pass by at random. From a 360° YouTube walk, © video owner, published with the owner\'s approval.' },
   corner: { label: 'Hội An LIVE corner', manifest: 'assets/hoian_live/live.json', renderer: 'video', loop: true, fov: 75,
     bounds: { minX: 0, maxX: 0, minZ: 0, maxZ: 0 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 0,
-    badge: '<b>Hội An, Tran Phu St. corner: LIVE 360° (test).</b> Stand on the corner and look around while people and scooters go by. Background: clean plate (median of the tripod 360° video); passers-by are procedural 3D figures. © video owner.' },
+    badge: '<b>Hội An, Tran Phu St. corner: LIVE 360° (test).</b> Stand on the corner and look around while people and scooters go by. Background: clean plate (median of the tripod 360° video); passers-by are real people cut out of the riverside walk footage. © video owner.' },
   walk: { label: 'Hội An street walk (private test)', manifest: 'assets/hoian_walk3/nodes.json', renderer: 'walk', fov: 75,
     // corridor: z = metres along the street (set from the manifest), x = ±1.5 m sideways. Eye at the 360° camera height.
     bounds: { minX: -1.5, maxX: 1.5, minZ: 0, maxZ: 1 }, eyeY: 0, start: { x: 0, z: 0, yaw: 0, pitch: 0 }, speed: 1.6,
@@ -173,7 +173,7 @@ async function loadVideo() {
   const src = base + (SC.loop ? man.corner.video : man.video[tag] || man.video['2k']);
   if (!SC.loop) BOUNDS.maxZ = man.nodes[man.nodes.length - 1].z;
   vw = new VideoWalk(SC.loop ? { mode: 'plate', base, plate: base + man.corner.plate, manifest: null } : { src, manifest: man, base });
-  traffic = new Traffic({ isMobile }); window.__traffic = traffic;
+  traffic = new Traffic({ isMobile, base }); window.__traffic = traffic;
   if (SC.loop) traffic.setStreet({ L: 7, R: 7, minZ: -40, maxZ: 40 });
   $('loadmsg').textContent = 'Buffering street video…';
   const ok = await vw.load((f, mb) => { $('fill').style.width = Math.round(100 * f) + '%'; $('loadmsg').textContent = `Buffering street video… ${Math.round(100 * f)}%`; $('loaddetail').textContent = `${mb.toFixed(0)} MB video (${tag}${SC.loop ? '' : ', streams while you walk'}) · ${SC.loop ? '360° corner' : man.length.toFixed(0) + ' m street'}`; });
@@ -223,7 +223,7 @@ renderer.setAnimationLoop(() => {
   if (vw) {
     const ni = vw.update(pos.z, dt); window.__state.node = ni;
     if (traffic && !SC.loop) { const n = vw.nodes[ni]; traffic.setStreet({ L: Math.min(n.L, 9), R: Math.min(n.R, 9), minZ: -12, maxZ: BOUNDS.maxZ + 12 }); }
-    if (traffic && window.__state.loaded) traffic.update(dt, pos);
+    if (traffic && window.__state.loaded) traffic.update(dt, pos, camera);
     if (!SC.loop) { $('sfill').style.width = (100 * pos.z / BOUNDS.maxZ).toFixed(1) + '%'; $('slabel').textContent = `${pos.z.toFixed(1)} m / ${BOUNDS.maxZ.toFixed(0)} m` + (vw.moving ? ` · video ${vw.currentTime.toFixed(1)} s` : ' · live street'); }
   }
   if (walk) {
