@@ -121,3 +121,9 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 ## Clean plates (`?crowd=1` only)
 `assets/plates/p*.jpg` are frames from the walk video with real people, bicycles and scooters removed automatically: YOLO11m-seg (Ultralytics, AGPL-3.0) masks + big-LaMa inpainting (Apache-2.0). The filled-in areas are machine-generated and can contain smudges or invented detail.
 The people in `assets/crowd/*.mp4` (L*, W*) are entirely AI-generated (image → image-to-video → keyed); none are real people.
+
+## Moving real people while stopped (`?crowd=1`, c4)
+`assets/real/` is derived from the same walk video:
+- Real people (and riders) are segmented with YOLO11s-seg (Ultralytics, AGPL-3.0), tracked automatically and cut out into per-stop alpha atlas videos.
+- The patches that erase them are machine-generated: optical-flow-warped neighbouring frames (OpenCV DIS) with big-LaMa (Apache-2.0) for leftovers. They can contain ghosts or smudges.
+- The cut-out people are real passers-by filmed in the source footage, not generated. After they leave, the AI-generated people from `assets/crowd/` appear.

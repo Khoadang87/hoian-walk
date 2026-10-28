@@ -116,3 +116,12 @@ Plate QA: every plate was scored (texture/darkness of the filled area vs its sur
 
 ### `?crowd=1` iOS robustness (c3)
 Generated-people clips now play from a pool of 4 detached, muted, inline `<video>`s primed on your first tap (iOS won't play hidden in-page videos, and has few decoders); at most 3 standing people + 1 walker. If no clean plate is within 0.8 s (or it fails to load), people are still placed on spots that are clear of real people in the frozen frame. Plate textures are dropped from GPU memory after 2 and downscaled if bigger than the device's max texture size. Assets are cache-busted (`?v=c3`). Add `&debug=1` for an on-screen state overlay (stopped, plate, gap, each clip's readyState/playing, errors).
+
+### `?crowd=1` v4: real people keep moving when you stop (c4)
+When you stop, the frame snaps (≤0.52 s) to the nearest precomputed stop point (two per 2 s of route). A patch erases the nearby real people/scooters, and the **same people are played back as cut-outs doing what they really did in the next ~4.5 s of footage**. Their positions are compensated for camera motion, so they stay anchored to the street. Each stop has one atlas video (colour on top, alpha below, H.264, 1280², about 12.5 fps), so only 1 decoder is needed. As each person's footage ends (they walk out, get occluded, or the clip ends), they fade out. AI-generated people then take over, with no looping. Files are in `assets/real/` (`r{g}.mp4/json` atlas + tracks, `p{q}.jpg` + `_a.jpg` patch + alpha, `index.json`). The old `assets/plates/` were removed.
+Limits:
+- Far/tiny people (above ~0.515 of frame height, or <14 px) are not erased and stay frozen.
+- Cut-outs are flat billboards with soft/haloed mask edges and are drawn over any occluders.
+- The patch fill can ghost or smudge.
+- Seam-crossing people are skipped.
+- People can fade mid-street.
