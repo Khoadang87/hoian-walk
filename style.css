@@ -27,3 +27,5 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;font:14px system-
 #hint.fade{animation:hintfade 9s forwards}@keyframes hintfade{0%,70%{opacity:1}100%{opacity:0;visibility:hidden}}
 #badge.fade{animation:hintfade 10s forwards}
 @media (pointer:coarse), (max-width: 700px) { #streetbar { top: calc(env(safe-area-inset-top, 0px) + 48px) !important; bottom: auto !important; } }
+body.loading #joy,body.loading #buttons,body.loading #live{opacity:0;pointer-events:none}
+#joy,#buttons,#live{transition:opacity .5s}
