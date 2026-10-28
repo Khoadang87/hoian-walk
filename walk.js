@@ -14,6 +14,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixe
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 const geo = new THREE.SphereGeometry(50, 128, 64); geo.scale(-1, 1, 1);
+// ground-plane proxy: the lower hemisphere is pushed onto a floor 1.6 m below the camera, so sideways sway gives real-looking parallax near your feet
+{ const P = geo.attributes.position, v = new THREE.Vector3(); for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).normalize(); const r = v.y < -0.032 ? Math.min(50, 1.6 / -v.y) : 50; P.setXYZ(i, v.x * r, v.y * r, v.z * r); } P.needsUpdate = true; }
 const mat = new THREE.MeshBasicMaterial({ color: 0xffffff }); const sphere = new THREE.Mesh(geo, mat); scene.add(sphere);
 function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.muted = true; v.defaultMuted = true; v.preload = 'auto'; v.loop = false;
   v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v); return v; }
@@ -81,6 +83,8 @@ let btnTarget = null;
     $('streetbar').hidden = false; $('slabel').textContent = j.name;
     $('turnL').textContent = '◀ Back'; $('turnR').textContent = 'Walk ▶'; hold($('turnL'), -WALK); hold($('turnR'), WALK);
     $('reset').textContent = 'Face ahead'; $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; };
+    if (!j.tracks['2k5']) $('quality').hidden = true;
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { audio.pause(); active?.el.pause(); } else { if (soundOn) { audio.volume = 0; audio.play().catch(() => {}); const t0 = performance.now(); const f = () => { const k = Math.min(1, (performance.now() - t0) / 1500); audio.volume = 0.85 * k; if (k < 1) requestAnimationFrame(f); }; f(); } if (active && !active.atEnd()) playSafe(active.el); } });
     $('quality').textContent = quality === '2k5' ? '2.5K' : '4K'; $('quality').onclick = () => { params.set('q', quality === '2k5' ? ('4k') : '2k5'); params.set('t', pos().toFixed(1)); location.search = params.toString(); };
     $('scene').textContent = 'More ▸'; $('scene').onclick = () => { location.search = '?scene=spots'; }; $('scene').title = '?scene=spots (6 tripod spots), ?scene=game, ?scene=live';
     $('hint').textContent = isMobile ? 'Joystick: walk forward/back · drag or turn phone: look around' : 'W/S or ↑/↓: walk · Shift: jog · drag: look around'; $('hint').classList.add('fade');
@@ -104,7 +108,7 @@ let btnTarget = null;
     let t = btnTarget; const kf = keys.KeyW || keys.ArrowUp, kb = keys.KeyS || keys.ArrowDown, jog = keys.ShiftLeft || keys.ShiftRight;
     if (t == null) { if (kf) t = jog ? JOG : WALK; else if (kb) t = -(jog ? JOG : WALK); else if (Math.abs(joy.y) > 0.15) { const m = (Math.abs(joy.y) - 0.15) / 0.85; t = -Math.sign(joy.y) * (m < 0.85 ? IDLE + (WALK - IDLE) * m / 0.85 : JOG); } else t = IDLE; }
     target = t; rate += (target - rate) * Math.min(1, dt * 2.5);
-    view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.3 ? joy.x : 0); view.lat += (view.latT * 1.0 - view.lat) * Math.min(1, dt * 3);
+    view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.3 ? joy.x : 0); view.lat += (view.latT * 0.6 - view.lat) * Math.min(1, dt * 3);
     if (window.__state.loaded && !swapping) {
       const idle = Math.abs(target) < 0.5;
       // direction: walking back uses the reversed track; idle keeps the current track (and ping-pongs at the ends)
