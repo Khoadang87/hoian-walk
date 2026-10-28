@@ -1,1 +1,1 @@
-{"radius":2.5,"stops":[{"t":300.0,"src":"assets/gen/s300.mp4","dur":20}]}
+{"radius": 2.5, "stops": [{"t": 285.0, "src": "assets/gen/s285.mp4", "dur": 20}, {"t": 300.0, "src": "assets/gen/s300.mp4", "dur": 20}, {"t": 315.0, "src": "assets/gen/s315.mp4", "dur": 20}, {"t": 345.0, "src": "assets/gen/s345.mp4", "dur": 20}, {"t": 360.0, "src": "assets/gen/s360.mp4", "dur": 20}]}

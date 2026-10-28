@@ -1,4 +1,4 @@
-// ?gen=1 experiment (one test stop, t=300): when you stop near it, the frozen frame crossfades (0.5 s) into an AI-generated
+// on by default (?gen=0 turns it off): ~20 stops along the walk: when you stop near it, the frozen frame crossfades (0.5 s) into an AI-generated
 // 360 clip: 4 perspective views of the stopped frame animated with image-to-video (Grok Imagine), reprojected onto the sphere
 // with feathered seams; sky/nadir stay the real frame. 2 chained generations (~20 s), then it holds the last frame (no loop).
 // iOS: one detached, muted, inline <video>, primed on the first tap; one H.264 file.
@@ -22,7 +22,7 @@ export async function initGen(THREE, o) {
     try {
       v.src = st.src + V; v.load();
       await ready(0); if (!isStanding()) { busy = false; phase = 'walk'; return; }
-      fin = Math.abs(st.t - s) <= 0.3 ? 0.5 : 0.9; if (fin === 0.5) await snapTo(st.t); if (!isStanding()) { busy = false; phase = 'walk'; return; } // a stop a little off the clip's frame: no snap (no jump), just a slower crossfade
+      fin = Math.abs(st.t - s) <= 0.5 ? 0.5 : 0.9; if (fin === 0.5) await snapTo(st.t); if (!isStanding()) { busy = false; phase = 'walk'; return; } // a stop a little off the clip's frame: no snap (no jump), just a slower crossfade
       cur = st; await v.play().catch(e => err('play ' + e.name)); phase = 'stop'; dbg.mode = 'gen ' + st.t;
     } catch (e) { err(e.message || e); phase = 'none'; }
     busy = false;
