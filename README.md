@@ -1,4 +1,31 @@
-# Walk a real captured place: web prototype
+# Hội An walk: web prototype
+
+**Live:** https://khoadang87.github.io/hoian-walk/
+
+## Current default: one continuous 10-minute walk (`walk.js`)
+A real 360° walking video, played as you walk. You start on Trần Phú street in Hội An old town and walk up to 10 minutes through the crowd into an assembly hall (likely the Fujian/Phúc Kiến hall at 46 Trần Phú). There are no arrows, no scene switches and no cuts. Source and licences are in CREDITS.md.
+
+**Controls**
+- **Phone:** push the stick up to walk; push it further for a jog. Pull it down to turn around. Push it sideways to sway left or right (up to 0.6 m). Drag or turn the phone to look around.
+- **Desktop:** W or ↑ walks, Shift jogs, S or ↓ turns around, A/D sway, drag looks around.
+- **Buttons:** ↺ Turn around, Walk ▶ (hold), Face ahead, More ▸ (quality and the older scenes).
+
+**How it behaves**
+- **Walking:** the 4K footage (3840×1920 H.264, 30 s chunks) plays at your pace, from about 0.4× to jog speed. Chunk handovers are pre-buffered, and a watchdog restarts a stalled video.
+- **Standing still:** the footage keeps drifting forward at **0.4×** (change it with `?idle=`). The world never freezes or loops; people move at about 0.4× speed. This is a deliberate compromise. Real-speed people would need the camera to move at walking speed, and slower settings such as 0.15× look like a slow-motion crowd.
+- **Turning around:** the camera turns smoothly and then shows a reversed copy of the footage (2048×1024), so the street you walked comes towards you. People in that copy move backwards, which is the main visible limit. The turn stops 25–55° off dead-behind, depending on screen width, and tilts slightly up, so the person carrying the camera stays mostly off-screen. You can still drag the view to see him. When you stand still facing back, the normal forward footage plays.
+- **Ends of the route:** inside the hall (or at the start of the street) the Turn around button pulses and a message tells you to turn around.
+- **Parallax:** swaying sideways moves the camera over a simple ground-plane proxy (the lower half of the sphere flattened onto a floor 1.6 m below). This is approximate, not real depth.
+- **Sound:** the real street sound from the same video, kept within a few seconds of where you are. When it drifts too far, it fades out briefly and resyncs. It fades in on the first tap, and pauses when the tab is hidden.
+
+**URL options:** `?t=<seconds>` start position, `?idle=<rate>`, `?ry=<rad>` sphere yaw, `?scene=spots` (older 360° spot tour), `?scene=game` (older 3D game street).
+
+**Run locally:** `python3 -m http.server 8090`, then open http://localhost:8090/.
+
+---
+*Everything below is the history of earlier prototypes, kept for reference.*
+
+## History: first prototype (splats)
 
 A self-contained web viewer (three.js + @mkkellogg/gaussian-splats-3d, both vendored, no build step) with two scenes:
 

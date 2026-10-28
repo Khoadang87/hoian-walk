@@ -57,7 +57,7 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 
 ---
 
-## Default scene (`?scene=live`): LIVE 360° street walk, real video
+## Earlier scene: LIVE 360° street walk, 3-minute version (superseded)
 
 | | |
 |---|---|
@@ -85,18 +85,30 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 - Pipeline (scripts/sprites/): Ultralytics YOLO11n + ByteTrack to track people/bikes/scooters in the 4K video, YOLO11s-seg masks on full-res crops, size-normalized 2-4 s clips at 12.5 fps packed into RGBA WebP atlases (11 clips, ~1.7 MB total). Models: Ultralytics YOLO11 (AGPL-3.0) run offline; only the resulting images ship.
 - Each passer-by is a camera-facing billboard with a soft contact shadow, random clip / start frame / playback rate / mirroring / lane / scale / speed / direction / timing; the same clip is never on screen twice at once.
 
-## 3D game street (default scene, `game.js`, since 2026-10-27)
+## Scene `?scene=game`: 3D game street (`game.js`)
 - **Characters & animations:** Quaternius, *Universal Animation Library* (mannequin, animations Walk_Loop, Walk_Formal_Loop, Idle_Loop, Idle_Talking_Loop, PickUp_Table, Sitting_Idle_Loop, Driving_Loop, Jog_Fwd_Loop) and *Universal Animation Library 2* (female mannequin), https://quaternius.itch.io/universal-animation-library and https://quaternius.itch.io/universal-animation-library-2. License: **CC0 1.0** (see `assets/game/QUATERNIUS_UAL_LICENSE.txt`). Changes: unused animations removed, meshes simplified to ~4k triangles, meshopt-compressed (`assets/game/char_m.glb`, `char_f.glb`); clothing/skin colours, hats (nón lá), helmets and hair are added at runtime in code.
 - **Everything else** (shophouses, roofs, shutters, signs, lanterns, trees, palms, umbrellas, boats, river, scooters, bicycles, all textures) is generated procedurally in `game.js` for this project. No third-party art.
 - **Engine:** three.js r186 (MIT) incl. addons GLTFLoader, SkeletonUtils, BufferGeometryUtils and meshoptimizer decoder (MIT), vendored under `vendor/`.
 - The layout is loosely modelled on Bạch Đằng street along the Thu Bồn river in Hội An; it is not a survey-accurate reconstruction.
 
-## Default scene: Hội An 360° real spots (presence.js)
+## Scene `?scene=spots`: Hội An 360° real spots (presence.js)
 - Footage: "Hoi An in 8K VR | Serene 360° Views of Vietnam's Ancient Riverside Town" by **VRoam With Me** (YouTube jFmx6PDZYNc, Insta360 X4). Six stationary tripod shots cut out, with the original sound: plaza 35.5–161 s, lane 162.5–311 s, boats 353.5–462 s, palms 463.5–612 s, steps 613.5–762 s, hall 763.5–913 s. Re-encoded to H.264 1920×960 (HD) and 1280×640 (SD) at the native 30 fps. Only a 1920×1080 copy could be fetched (YouTube blocked higher-res requests from this server), so this is softer than the 8K original.
 - Generated content: **none**. Transitions between spots are a rendered zoom/blur crossfade, not footage. The order of the spots is a plausible riverside route; the footage has no GPS, so the arrow directions are approximate.
 
-## Continuous walk (default scene)
-- Footage and street audio: YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk). The route is 600 s (10 min), from 15:45 to 25:45 of the source: Trần Phú street (past the pharmacy at 83 Trần Phú) into an assembly hall, likely the Fujian (Phúc Kiến) hall at 46 Trần Phú. Ambience is taken from 15:00–25:40 of the same video.
-- All imagery and sound are real recordings. There is no generated or AI-filled content in this scene.
-- Encodes: 4K 3840x1920 H.264 (CRF 22, capped at 7.5 Mbps) and a reversed 2048x1024 copy for walking backward. All are split into 30 s chunks.
-- Sideways sway uses a simple ground-plane proxy for parallax. It is not real depth data.
+## Continuous walk (default scene, `walk.js`)
+- **Footage and street audio:** YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk), © the uploader, published with the project owner's approval.
+  - The route is 600 s (10 min), from 15:45 to 25:45 of the source: Trần Phú street (past the pharmacy at 83 Trần Phú) into an assembly hall, likely the Fujian (Phúc Kiến) hall at 46 Trần Phú.
+  - The ambience is 15:00–25:40 of the same video, so the sound you hear was recorded on this street.
+- **Real vs generated:**
+  - All imagery and sound are real recordings. There is no generated, interpolated or AI-filled content in this scene.
+  - The camera carrier is real footage too. He is kept off-screen by the turn-around angle, not removed.
+- **Encodes:**
+  - Forward: 4K 3840×1920 H.264 (CRF 22, capped at 7.5 Mbps).
+  - Turned around: a time-reversed 2048×1024 copy.
+  - Both are split into 30 s chunks.
+- **Computed behaviour (no new pixels):**
+  - Playback rate follows your input. Standing still plays at 0.4×.
+  - Turning around rotates the camera and switches to the reversed copy.
+  - The sideways sway uses a simple ground-plane proxy for parallax. It is not real depth data.
+  - The ambience is re-synced to your position with a short fade.
+- **Previous versions** are still reachable: `?scene=spots` and `?scene=game` (the sections above).
