@@ -96,6 +96,7 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
 - Generated content: **none**. Transitions between spots are a rendered zoom/blur crossfade, not footage. The order of the spots is a plausible riverside route; the footage has no GPS, so the arrow directions are approximate.
 
 ## Continuous walk (default scene)
-- Footage and street audio: YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk). The route is 180 s, from 22:45 to 25:45 of the source. Ambience is taken from 15:00–25:40 of the same video.
+- Footage and street audio: YouTube video https://www.youtube.com/watch?v=C26CAyJkt4g (360° 4K Hội An walk). The route is 600 s (10 min), from 15:45 to 25:45 of the source: Trần Phú street (past the pharmacy at 83 Trần Phú) into an assembly hall, likely the Fujian (Phúc Kiến) hall at 46 Trần Phú. Ambience is taken from 15:00–25:40 of the same video.
 - All imagery and sound are real recordings. There is no generated or AI-filled content in this scene.
-- Encodes: 4K 3840x1920 H.264 (CRF 21), 2560x1280 H.264, and a reversed 2.5K copy for walking backward. All are split into 30 s chunks.
+- Encodes: 4K 3840x1920 H.264 (CRF 22, capped at 7.5 Mbps) and a reversed 2048x1024 copy for walking backward. All are split into 30 s chunks.
+- Sideways sway uses a simple ground-plane proxy for parallax. It is not real depth data.
