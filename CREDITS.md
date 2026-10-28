@@ -113,3 +113,4 @@ These are real frames from the same YouTube video's 2160p stream (© the video o
   - The sideways sway uses a simple ground-plane proxy for parallax. It is not real depth data.
   - The ambience is re-synced to your position with a short fade.
 - **Previous versions** are still reachable: `?scene=spots` and `?scene=game` (the sections above).
+- Ambience audio now pauses while standing still (no looping).

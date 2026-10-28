@@ -34,3 +34,8 @@ body.loading #joy,body.loading #buttons,body.loading #live{opacity:0;pointer-eve
 #hint{font-size:12px;text-shadow:0 1px 3px #000}
 @media (pointer:coarse), (max-width: 700px) { #hint { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 172px); left: 50%; right: auto; transform: translateX(-50%); width: min(80vw, 420px); background: #000a; border-radius: 8px; padding: 6px 10px; opacity: 1; font-size: 13px } }
 #hint.fade{animation-duration:12s}
+/* Minimal walk UI (default scene): only the joystick + look; everything else hidden. The elements stay in the DOM so presence/game scenes and future custom buttons can reuse them. */
+body.minimal #buttons, body.minimal #live, body.minimal #streetbar, body.minimal #badge, body.minimal #spin { display: none !important; }
+body.minimal #tapstart { inset: auto; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translateX(-50%); width: auto; height: auto; padding: 8px 14px; font-size: 14px; font-weight: 500; border-radius: 18px; background: #000a; }
+body.minimal #hint { top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 86vw; background: #0008; border-radius: 14px; padding: 6px 12px; font-size: 13px; }
+body.minimal #tapstart:not([hidden]) ~ #hint { top: calc(env(safe-area-inset-top, 0px) + 56px); }

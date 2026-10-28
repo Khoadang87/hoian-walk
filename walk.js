@@ -10,7 +10,7 @@ const showError = (m) => { $('loader').hidden = true; const e = $('error'); e.hi
 window.__state = { loaded: false };
 /* the camera carrier occupies ~±18° around dead-behind, below the horizon: stop the turn far enough off-axis that he is outside the screen half-width */
 const TURN_OFF = () => Math.min(0.95, Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) + 0.42);
-const IDLE = +(params.get('idle') || 0.4), WALK = 1.0, JOG = 1.8;
+const IDLE = +(params.get('idle') || 0) /* 0 = standing still pauses the footage; ?idle=0.4 restores the old forward drift */, WALK = 1.0, JOG = 1.8;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); $('app').appendChild(renderer.domElement);
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
@@ -26,7 +26,12 @@ const audio = document.createElement('audio'); audio.loop = true; audio.preload 
 const AVOL = 0.85, AOFF = 45; const aud = { g: 0, goal: 0, res: false, node: null };
 const aWant = () => Math.min(Math.max(0, AOFF + pos()), 639);
 function aInit() { if (aud.node) return; try { const C = window.AudioContext || window.webkitAudioContext; const ctx = new C(); const src = ctx.createMediaElementSource(audio); aud.node = ctx.createGain(); aud.node.gain.value = 0; src.connect(aud.node).connect(ctx.destination); aud.ctx = ctx; ctx.resume?.(); } catch (e) { aud.node = null; } }
-function aTick(dt) { if (!soundOn || audio.paused) return; const drift = audio.currentTime - aWant(); if (!aud.res && Math.abs(drift) > (Math.abs(rate) > 0.6 ? 6 : 30)) { aud.res = true; aud.goal = 0; } if (aud.res && aud.g < 0.02) { audio.currentTime = aWant(); aud.res = false; aud.goal = AVOL; } aud.g += (aud.goal - aud.g) * Math.min(1, dt * (aud.goal < aud.g ? 4 : 1.6)); if (aud.node) { aud.node.gain.value = aud.g; if (aud.ctx.state === 'suspended') aud.ctx.resume(); } else audio.volume = Math.min(1, aud.g); }
+function aTick(dt) { if (!soundOn) return;
+  /* standing still (idle=0): fade the street sound out and pause it, so nothing loops; it resumes in sync when you walk */
+  if (view.standing) { aud.goal = 0; if (aud.g < 0.02 && !audio.paused) audio.pause(); }
+  else if (audio.paused) { if (document.hidden) return; audio.currentTime = aWant(); audio.play().catch(() => {}); aud.goal = AVOL; aud.res = false; }
+  else { const drift = audio.currentTime - aWant(); if (!aud.res && Math.abs(drift) > (Math.abs(rate) > 0.6 ? 6 : 30)) { aud.res = true; aud.goal = 0; } if (aud.res && aud.g < 0.02) { audio.currentTime = aWant(); aud.res = false; aud.goal = AVOL; } if (!aud.res) aud.goal = AVOL; }
+  aud.g += (aud.goal - aud.g) * Math.min(1, dt * (aud.goal < aud.g ? 4 : 1.6)); if (aud.node) { aud.node.gain.value = aud.g; if (aud.ctx.state === 'suspended') aud.ctx.resume(); } else audio.volume = Math.min(1, aud.g); }
 const mkTex = v => { const t = new THREE.VideoTexture(v); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
 let LO = 0, HI = 1e9, D = 0, rate = IDLE, target = IDLE, swapping = false, soundOn = false, frames = 0, lastAdv = performance.now(), quality = '4k', chunkSwaps = 0;
 // A chunked track: the route split into L-second files, played back to back with the next chunk preloaded in a 2nd element.
@@ -95,20 +100,20 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     $('turnR').textContent = 'Walk ▶'; $('turnL').textContent = '↺ Turn around'; $('turnL').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); turnAround(); }); hold($('turnR'), 'walk');
     $('reset').textContent = 'Face ahead'; $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; };
     if (!j.tracks['2k5']) $('quality').hidden = true;
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { audio.pause(); active?.el.pause(); } else { if (soundOn) { aud.g = 0; aud.goal = AVOL; audio.currentTime = aWant(); audio.play().catch(() => {}); } if (active && !active.atEnd()) playSafe(active.el); } });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { audio.pause(); active?.el.pause(); } else { if (soundOn) { aud.g = 0; aud.goal = AVOL; audio.currentTime = aWant(); audio.play().catch(() => {}); } if (active && !active.atEnd() && !view.standing) playSafe(active.el); } });
     $('quality').textContent = quality === '2k5' ? '2.5K' : '4K'; $('quality').onclick = () => { params.set('q', quality === '2k5' ? ('4k') : '2k5'); params.set('t', pos().toFixed(1)); location.search = params.toString(); };
     $('scene').textContent = 'More ▸'; $('scene').onclick = () => { location.search = '?scene=spots'; }; $('scene').title = '?scene=spots (6 tripod spots), ?scene=game, ?scene=live';
-    $('hint').textContent = isMobile ? 'Push the stick up to walk · pull down to turn around · drag or turn your phone to look' : 'W / ↑: walk · S / ↓: turn around · Shift: jog · drag: look around';
+    document.body.classList.add('minimal'); $('hint').textContent = isMobile ? 'Stick up: walk · stick down: turn around · drag to look' : 'W / ↑: walk · S / ↓: turn around · drag: look';
     new THREE.TextureLoader().load(BASE + j.poster, t => { t.colorSpace = THREE.SRGBColorSpace; if (!frames) { mat.map = t; mat.needsUpdate = true; if (!window.__state.loaded) renderer.setAnimationLoop(() => renderer.render(scene, camera)); } });
     audio.src = BASE + j.audio;
     const prog = setInterval(() => { try { const v = fwdT.el, b = v.buffered.length ? v.buffered.end(0) - v.currentTime : 0; $('fill').style.width = Math.min(100, 15 + b / 2 * 85) + '%'; } catch (e) {} }, 200);
     $('loadmsg').textContent = 'Loading the street in ' + (quality === '2k5' ? '2.5K' : '4K') + '…';
-    await fwdT.seek(Math.max(LO, +(params.get('t') || 0))); fwdT.el.playbackRate = IDLE;
+    await fwdT.seek(Math.max(LO, +(params.get('t') || 0))); fwdT.el.playbackRate = Math.max(0.0625, IDLE);
     if (fwdT.el.error) throw new Error('video failed to load (' + (fwdT.el.error.code) + ')');
     clearInterval(prog); $('loader').hidden = true; document.body.classList.remove('loading'); $('hint').classList.add('fade'); window.__state.loaded = true; setSpin(true);
     if (!(await playSafe(fwdT.el))) showTap();
     let gyroOn = false;
-    const onGesture = () => { $('tapstart').hidden = true; if (active.el.paused && !active.atEnd()) playSafe(active.el);
+    const onGesture = () => { $('tapstart').hidden = true; if (active.el.paused && !active.atEnd() && !view.standing) playSafe(active.el);
       if (!soundOn) { soundOn = true; aInit(); aud.g = 0; aud.goal = AVOL; audio.currentTime = aWant(); audio.play().catch(() => { soundOn = false; }); }
       if (!gyroOn && isMobile) { gyroOn = true; enableGyro(); } revT.seek(D - pos()).catch(() => {}); };
     $('tapstart').onclick = onGesture; for (const ev of ['pointerup', 'touchend', 'keydown']) addEventListener(ev, () => { if (!soundOn || (active.el.paused && !active.atEnd())) onGesture(); }, true);
@@ -119,17 +124,18 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     let t = btnTarget === 'walk' ? WALK : null; const kf = keys.KeyW || keys.ArrowUp, jog = keys.ShiftLeft || keys.ShiftRight;
     if (joy.y > 0.75 && !view.joyTurned) { view.joyTurned = true; turnAround(); } else if (joy.y < 0.4) view.joyTurned = false;
     if (t == null) { if (kf) t = jog ? JOG : WALK; else if (joy.y < -0.15) { const m = (-joy.y - 0.15) / 0.85; t = m < 0.88 ? IDLE + (WALK - IDLE) * Math.pow(m / 0.88, 1.4) /* gentle start, full walk well before the rim */ : JOG; } }
-    t = t == null ? IDLE : t * view.face; if (Math.abs(t) <= IDLE + 1e-6) t = IDLE; // standing: natural-looking forward footage at a slow drift
+    t = t == null ? IDLE : t * view.face; if (Math.abs(t) <= IDLE + 1e-6) t = IDLE; view.standing = IDLE === 0 && Math.abs(t) < 0.01 && Math.abs(rate) < 0.15; // standing: natural-looking forward footage at a slow drift
     target = t; rate += (target - rate) * Math.min(1, dt * 2.5);
     view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.3 ? joy.x : 0); view.lat += (view.latT * 0.6 - view.lat) * Math.min(1, dt * 3);
     if (window.__state.loaded && !swapping) {
       const idle = Math.abs(target) < 0.5;
       // direction: walking back uses the reversed track; idle keeps the current track (and ping-pongs at the ends)
-      let want = rate < -0.05 ? revT : rate > 0.3 ? fwdT : active; if (idle) want = (pos() >= HI - 0.5) ? active : fwdT;
+      let want = rate < -0.05 ? revT : rate > 0.3 ? fwdT : active; if (idle) want = IDLE > 0 ? ((pos() >= HI - 0.5) ? active : fwdT) : active;
       if (want !== active && !(want === revT && pos() <= LO + 0.2) && !(want === fwdT && pos() >= HI - 0.2)) switchTo(want);
       else if (active === fwdT && pos() >= HI - 0.05) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
       else if (active === revT && pos() <= LO + 0.1) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
-      else { const v = active.el, pr = Math.max(0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
+      else if (view.standing) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
+      else { const v = active.el; if (v.paused && !active.atEnd() && !swapping && !v._pp) { v._pp = 1; playSafe(v).finally(() => { v._pp = 0; }); } const pr = Math.max(0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
         edgeStatus(); }
     }
     view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
@@ -139,7 +145,10 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = Math.max(0, (pos() - LO) / (HI - LO) * 100) + '%';
     renderer.render(scene, camera); });
   setInterval(() => { if (!window.__state.loaded || swapping) return; const v = active.el; if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 2500 && !active.nudged) { active.nudged = true; v.currentTime = v.currentTime + 0.02; playSafe(v); lastAdv = performance.now(); return; } if (!v.paused && !active.atEnd() && performance.now() - lastAdv > 6000) { active.nudged = false; setSpin(true); $('nodestatus').textContent = 'Reconnecting…'; const p = pos(); active.loaded = [-1, -1]; active.seek(active === fwdT ? p : D - p).then(() => playSafe(active.el)); lastAdv = performance.now(); }
-    else if (v.paused && !active.atEnd() && $('tapstart').hidden && !soundOn) showTap(); }, 1000);
+    else if (v.paused && !view.standing && !active.atEnd() && $('tapstart').hidden && !soundOn) showTap(); }, 1000);
 })();
-function showTap() { const t = $('tapstart'); t.textContent = '▶ Tap to start'; t.hidden = false; }
+function showTap() { const t = $('tapstart'); t.textContent = '🔊 Tap to start'; t.hidden = false; }
+/* Public hooks for custom UI (buttons etc.). Example: HoianWalk.setWalk(true) while a button is held.
+   setWalk(on|null): walk forward like the stick; turnAround(); faceAhead(); state() -> { pos, lo, hi, facing, standing, sound } */
+window.HoianWalk = { setWalk: on => { btnTarget = on ? 'walk' : null; }, turnAround: () => turnAround(), faceAhead: () => { view.yaw = 0; view.pitch = 0; }, state: () => ({ pos: pos(), lo: LO, hi: HI, facing: view.face > 0 ? 'forward' : 'back', standing: !!view.standing, sound: soundOn }) };
 window.__test = { aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
