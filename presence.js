@@ -9,7 +9,7 @@ const showError = (m) => { $('loader').hidden = true; const e = $('error'); e.hi
 window.__state = { loaded: false };
 
 const renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight); $('app').appendChild(renderer.domElement);
-const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(isMobile ? 80 : 75, innerWidth / innerHeight, 0.1, 100);
+const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 100);
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // two spheres: current spot and the one fading in (crossfade + zoom-blur during transitions)
@@ -36,15 +36,27 @@ function makeArrow(yaw, to, label) { const m = new THREE.Mesh(arrowGeo, new THRE
   arrows.add(g); return g; }
 
 // view state
-const view = { yaw: 0, pitch: 0, fov: camera.fov, gyro: null }; let spots = [], cur = -1, busy = false, quality = 'hi', started = false;
-function setDir() { camera.quaternion.setFromEuler(new THREE.Euler(view.pitch, view.yaw, 0, 'YXZ')); if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro); }
+const view = { yaw: 0, pitch: 0, sy: 0, sp: 0, fov: camera.fov, gyro: null }; let spots = [], cur = -1, busy = false, quality = 'hi', started = false;
+function setDir() { view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; camera.quaternion.setFromEuler(new THREE.Euler(view.sp, view.sy, 0, 'YXZ')); if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro); }
 
 // video elements: one per sphere; loop with a crossfade from a frozen frame (the shots are 1.2–2.5 min; no short loop)
-function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.muted = true; return v; }
+function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.autoplay = true; v.preload = 'auto'; v.muted = true; v.defaultMuted = true;
+  v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v); return v; }
 const vids = [mkVideo(), mkVideo()]; let front = 0;
 const tex = vids.map(v => { const t = new THREE.VideoTexture(v); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t; });
 const freezeCanvas = document.createElement('canvas'), freezeTex = new THREE.CanvasTexture(freezeCanvas); freezeTex.colorSpace = THREE.SRGBColorSpace;
-let loopFade = 0, stalls = [];
+let loopFade = 0, stalls = [], soundOn = false, lastAdv = performance.now(), lastT = -1, frames = 0;
+function setSpin(on) { $('spin').hidden = !on; }
+function liveBadge() { const v = vids[front], adv = performance.now() - lastAdv < 1500 && !v.paused; $('live').textContent = adv ? (soundOn && !v.muted ? '● LIVE · sound on' : '● LIVE · tap for sound') : '○ paused'; $('live').className = adv ? 'on' : ''; }
+async function tryPlay(v) { try { await v.play(); $('tapstart').hidden = true; } catch (e) { if (!soundOn || v.muted) { v.muted = true; try { await v.play(); return; } catch (e2) {} } showTap(); } }
+function showTap() { const t = $('tapstart'); t.textContent = '▶ Tap anywhere to start the live 360° video'; t.hidden = false; }
+// swap the still poster for the video texture only once frames are actually advancing
+function watchFrames(v) { const myV = v; const onFrame = () => { if (myV !== vids[front]) return; frames++; lastAdv = performance.now(); setSpin(false); if (sA.material.uniforms.map.value !== tex[front] && !busy && myV.readyState >= 2) sA.material.uniforms.map.value = tex[front]; if (myV.requestVideoFrameCallback) myV.requestVideoFrameCallback(onFrame); };
+  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(onFrame); else v.ontimeupdate = () => { if (v.currentTime !== lastT) { lastT = v.currentTime; onFrame(); } }; }
+let retries = 0;
+setInterval(() => { const v = vids[front]; if (!window.__state.loaded || busy) return; liveBadge(); const stuck = performance.now() - lastAdv;
+  if (!v.paused && stuck > 6000) { setSpin(true); $('nodestatus').textContent = 'Video stalled — retrying…'; if (stuck > 6000 && retries++ < 3) { const t = v.currentTime; v.load(); v.currentTime = t; tryPlay(v); lastAdv = performance.now(); } else if (retries >= 3) $('nodestatus').textContent = 'The video is not playing on this connection. Try Quality: SD or reload.'; }
+  else if (v.paused && !$('tapstart').hidden === false && stuck > 3000) showTap(); }, 1000);
 function srcFor(s) { return BASE + s.files[quality]; }
 function loadInto(i, s) { return new Promise((res, rej) => { const v = vids[i]; let done = false; const ok = () => { if (!done) { done = true; res(); } };
   v.onerror = () => rej(new Error('video failed: ' + srcFor(s))); v.src = srcFor(s); v.currentTime = 0; v.addEventListener('loadeddata', ok, { once: true }); v.load(); setTimeout(ok, 20000); }); }
@@ -59,13 +71,13 @@ async function go(idx, viaYaw) {
   const t0 = performance.now(), D = first ? 400 : 750, dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   sA.material.uniforms.dir.value.copy(dir).applyAxisAngle(new THREE.Vector3(0, 1, 0), -sA.rotation.y); sB.material.uniforms.dir.value.copy(sA.material.uniforms.dir.value);
   await new Promise(r => { const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = k * k * (3 - 2 * k);
-    sA.material.uniforms.blur.value = first ? 0 : e; camera.fov = view.fov - (first ? 0 : 22 * Math.sin(e * Math.PI)); camera.updateProjectionMatrix();
+    sA.material.uniforms.blur.value = first ? 0 : e; camera.fov = view.fov - (first ? 0 : 8 * Math.sin(e * Math.PI)); camera.updateProjectionMatrix();
     sB.material.uniforms.opacity.value = e; sB.material.uniforms.blur.value = first ? 0 : (1 - e) * 0.8; if (k < 1) requestAnimationFrame(step); else r(); }; step(); });
   // swap
   sA.material.uniforms.map.value = sB.material.uniforms.map.value; sA.rotation.y = sB.rotation.y; sA.material.uniforms.blur.value = 0; sB.visible = false;
   vids[front].pause(); vids[front].removeAttribute('src'); vids[front].load(); front = back; cur = idx;
-  await pLoad; const v = vids[front]; v.muted = !started; if (started) await v.play().catch(() => {}); if (v.readyState >= 2) sA.material.uniforms.map.value = tex[front];
-  v.onplaying = () => { sA.material.uniforms.map.value = tex[front]; $('nodestatus').textContent = ''; }; v.onwaiting = () => { $('nodestatus').textContent = 'buffering…'; stalls.push(performance.now()); };
+  await pLoad; const v = vids[front]; v.muted = !soundOn; tryPlay(v); watchFrames(v);
+  v.onplaying = () => { $('nodestatus').textContent = ''; }; v.onwaiting = () => { $('nodestatus').textContent = 'buffering…'; setSpin(true); stalls.push(performance.now()); };
   arrows.clear(); for (const l of s.links) { const a = makeArrow(l.yaw, l.to); } busy = false; window.__state.spot = idx;
   history.replaceState(null, '', '?' + new URLSearchParams({ ...Object.fromEntries(params), spot: s.id }).toString());
 }
@@ -93,7 +105,7 @@ joyEl.addEventListener('pointermove', e => { if (e.pointerId !== joy.id) return;
 const joyEnd = e => { if (e.pointerId === joy.id) { joy = { x: 0, y: 0, id: null, fired: false }; knob.style.transform = ''; } }; joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
 function enableGyro() { const on = () => addEventListener('deviceorientation', ev => { if (ev.alpha == null) return; const z = THREE.MathUtils.degToRad(ev.alpha), x = THREE.MathUtils.degToRad(ev.beta), y = THREE.MathUtils.degToRad(ev.gamma), o = THREE.MathUtils.degToRad(screen.orientation?.angle || window.orientation || 0);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, z, -y, 'YXZ')).multiply(new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5))).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -o));
-    if (!view.gyro) { view.gyroYaw0 = view.yaw - new THREE.Euler().setFromQuaternion(q, 'YXZ').y; view.yaw = 0; view.pitch = 0; } view.gyro = q; });
+    if (view.gyro) q.slerp(view.gyro, 0.0); if (view.gyro) q.copy(view.gyro.clone().slerp(q, 0.25)); if (!view.gyro) { view.gyroYaw0 = view.yaw - new THREE.Euler().setFromQuaternion(q, 'YXZ').y; view.yaw = 0; view.pitch = 0; } view.gyro = q; });
   if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().then(p => p === 'granted' && on()).catch(() => {}); else on(); }
 
 // boot
@@ -101,21 +113,23 @@ function enableGyro() { const on = () => addEventListener('deviceorientation', e
   try {
     $('badge').innerHTML = '<b>Hội An, real 360° footage.</b> Real tripod shots (1.8–2.5 min each) played in real time with their own sound; nothing added. Drag to look around · arrows on the ground or ↑/↓ to move between spots. <a href="CREDITS.md" target="_blank">Credits</a>';
     $('streetbar').hidden = false; $('turnL').textContent = '◀ Back'; $('turnR').textContent = 'Forward ▶'; $('turnL').onclick = () => nearestLink(false); $('turnR').onclick = () => nearestLink(true);
-    $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; view.fov = camera.fov = isMobile ? 80 : 75; camera.updateProjectionMatrix(); };
+    $('reset').onclick = () => { view.yaw = 0; view.pitch = 0; view.fov = camera.fov = 75; camera.updateProjectionMatrix(); };
     $('quality').textContent = 'Quality: auto'; $('quality').onclick = () => { quality = quality === 'hi' ? 'lo' : 'hi'; $('quality').textContent = 'Quality: ' + (quality === 'hi' ? 'HD' : 'SD'); const s = cur; cur = -1; go(s); };
     $('scene').textContent = '3D game street ▸'; $('scene').onclick = () => { location.search = '?scene=game'; }; $('scene').title = 'Other scenes: ?scene=game, ?scene=live';
     $('hint').textContent = isMobile ? 'Drag or turn your phone to look · joystick up/down or the ground arrows to move' : 'Drag to look · scroll to zoom · W/↑ forward, S/↓ back, or click the ground arrows';
     $('loadmsg').textContent = 'Loading spots…'; const r = await fetch(BASE + 'spots.json'); if (!r.ok) throw new Error('spots.json ' + r.status); const j = await r.json(); spots = j.spots;
     quality = params.get('q') || (isMobile || (navigator.connection && navigator.connection.downlink < 3) ? 'lo' : 'hi');
     const start = Math.max(0, spots.findIndex(s => s.id === params.get('spot'))); $('fill').style.width = '40%';
-    await go(start); $('fill').style.width = '100%'; $('loader').hidden = true; window.__state.loaded = true;
-    const tap = $('tapstart'); tap.textContent = '▶ Tap to be there (with sound)'; tap.hidden = false;
-    tap.onclick = async () => { tap.hidden = true; if (isMobile) $('badge').hidden = true; started = true; const v = vids[front]; v.muted = false; await v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); if (isMobile) enableGyro(); };
-    if (params.get('autoplay')) tap.onclick();
+    await go(start); setSpin(true); $('fill').style.width = '100%'; $('loader').hidden = true; window.__state.loaded = true;
+    const tap = $('tapstart'); let gest = false;
+    const onGesture = () => { $('tapstart').hidden = true; if (isMobile) $('badge').hidden = true; started = true; soundOn = true; const v = vids[front]; v.muted = false; v.play().then(() => {}).catch(() => { v.muted = true; v.play().catch(() => {}); });
+      if (!gest && isMobile) enableGyro(); gest = true; liveBadge(); };
+    tap.onclick = onGesture; addEventListener('pointerup', () => { if (!soundOn || vids[front].paused) onGesture(); }, true); addEventListener('touchend', () => { if (!soundOn || vids[front].paused) onGesture(); }, true);
+    if (params.get('autoplay')) onGesture();
   } catch (e) { showError('The 360° street could not start: ' + e.message + '\nReload, or try the 3D street: ?scene=game'); return; }
   renderer.setAnimationLoop(() => { setDir(); loopCheck(); arrows.rotation.y = 0;
     for (const a of arrows.children) { const d = Math.atan2(Math.sin(a.rotation.y - view.yaw), Math.cos(a.rotation.y - view.yaw)); a.children.forEach(m => m.material.opacity = (m.geometry === arrowGeo ? 0.9 : 0.35) * (Math.abs(d) < 1.2 ? 1 : 0.55)); }
     const now = performance.now(); stalls = stalls.filter(t => now - t < 15000); if (stalls.length >= 3 && quality === 'hi' && !busy) { stalls = []; quality = 'lo'; $('quality').textContent = 'Quality: SD (auto)'; const v = vids[front], t = v.currentTime; const s = cur; cur = -1; go(s).then(() => { vids[front].currentTime = t; }); }
     renderer.render(scene, camera); });
 })();
-window.__test = { seek: t => { vids[front].currentTime = t; }, setYaw: y => view.yaw = y, go: i => go(i), state: () => ({ spot: cur, t: vids[front].currentTime, dur: vids[front].duration, paused: vids[front].paused, q: quality, w: vids[front].videoWidth, loops: window.__state.loops || 0 }) };
+window.__test = { seek: t => { vids[front].currentTime = t; }, setYaw: y => view.yaw = y, go: i => go(i), state: () => ({ frames, live: $('live').textContent, spot: cur, t: vids[front].currentTime, dur: vids[front].duration, paused: vids[front].paused, q: quality, w: vids[front].videoWidth, loops: window.__state.loops || 0 }) };
