@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isMobile = matchMedia('(pointer:coarse)').matches || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const BASE = 'assets/walk/';
 const showError = (m) => { $('loader').hidden = true; const e = $('error'); e.hidden = false; e.textContent = m; console.error('[viewer-error]', m); window.__viewerError = m; };
@@ -21,7 +22,7 @@ const geo = new THREE.SphereGeometry(50, 128, 64); geo.scale(-1, 1, 1);
 const mat = new THREE.MeshBasicMaterial({ color: 0xffffff }); const sphere = new THREE.Mesh(geo, mat); sphere.rotation.y = +(params.get("ry") ?? -Math.PI / 2); scene.add(sphere);
 function mkVideo() { const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('muted', ''); v.muted = true; v.defaultMuted = true; v.preload = 'auto'; v.loop = false;
   v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1'; document.body.appendChild(v); return v; }
-let gen = null; if (params.get('gen') === '1') import('./gen.js?v=g2').then(m => m.initGen(THREE, { scene, sphere, geo, ver: 'g2', isStanding: () => !!view.standing, pos: () => pos(), snapTo })).then(g => { gen = g; window.__gen = g; }).catch(e => console.warn('gen', e)); /* experimental: AI-generated 360 motion at one test stop */
+let gen = null; if (params.get('gen') === '1') import('./gen.js?v=g3').then(m => m.initGen(THREE, { scene, sphere, geo, ver: 'g3', isStanding: () => !!view.standing, pos: () => pos(), snapTo })).then(g => { gen = g; window.__gen = g; }).catch(e => console.warn('gen', e)); /* experimental: AI-generated 360 motion at one test stop */
 let crowd = null; if (params.get('crowd') === '1') import('./crowd.js?v=c4').then(m => m.initCrowd(THREE, { scene, camera, sphere, geo, renderer, ver: 'c4', isStanding: () => !!view.standing, pos: () => pos(), snapTo })).then(c => { crowd = c; window.__crowd = c; }).catch(e => { console.warn('crowd', e); if (params.get('debug') === '1') { const d = document.createElement('pre'); d.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;background:#000c;color:#f88;font:11px monospace;padding:6px'; d.textContent = 'crowd init failed: ' + e; document.body.appendChild(d); } }); /* experimental: clean plate + generated people while standing */ /* experimental: generated people while standing */
 const audio = document.createElement('audio'); audio.loop = true; audio.preload = 'auto'; document.body.appendChild(audio);
 /* Ambience = the real street sound of the same source (15:00 onward; the route starts at 15:45). One gain controller does all fades; WebAudio gain is used where available because iOS ignores audio.volume. */
@@ -53,7 +54,7 @@ class Track {
   tick(r) { const v = this.el; if (!v.duration) return; const n0 = this.nx;
     if (this.primed !== this.ci && this.ci + 1 < this.urls.length && this.loaded[1 - this.k] === this.ci + 1 && v.currentTime > v.duration - 2.5 * Math.max(1, r) && n0.readyState >= 1) { this.primed = this.ci; n0.play().then(() => { if (this.nx === n0) { n0.pause(); n0.currentTime = 0; } }).catch(() => {}); }
     if (this.ci + 1 < this.urls.length && v.currentTime >= v.duration - 0.06 * Math.max(1, r)) { const n = this.nx;
-      if (this.loaded[1 - this.k] !== this.ci + 1) this.load(1 - this.k, this.ci + 1); if (n.readyState >= 2) { n.currentTime = 0; n.playbackRate = Math.max(0.0625, r); n.play().catch(() => {}); if (n.readyState >= 2) { mat.map = this.tex[1 - this.k]; mat.needsUpdate = true; } v.pause(); this.k = 1 - this.k; this.ci++; chunkSwaps++; setTimeout(() => this.load(1 - this.k, this.ci + 1), 300); } } }
+      if (this.loaded[1 - this.k] !== this.ci + 1) this.load(1 - this.k, this.ci + 1); if (n.readyState >= 2) { n.currentTime = 0; n.playbackRate = Math.max(isIOS ? 0.5 : 0.0625, r); n.play().catch(() => {}); if (n.readyState >= 2) { mat.map = this.tex[1 - this.k]; mat.needsUpdate = true; } v.pause(); this.k = 1 - this.k; this.ci++; chunkSwaps++; setTimeout(() => this.load(1 - this.k, this.ci + 1), 300); } } }
   atEnd() { return this.ci === this.urls.length - 1 && this.el.duration && this.el.currentTime >= this.el.duration - 0.15; }
   pauseAll() { this.els.forEach(v => v.pause()); }
 }
@@ -63,18 +64,32 @@ function setSpin(on) { $('spin').hidden = !on; }
 async function playSafe(v) { try { return await Promise.race([v.play().then(() => true), new Promise(r => setTimeout(() => r(!v.paused), 1500))]); } catch (e) { return false; } }
 async function snapTo(p) { if (swapping || !active) return; swapping = true; try { await active.seek(active === fwdT ? p : D - p); active.el.pause(); if (active.el.readyState >= 2) { mat.map = active.tex[active.k]; mat.needsUpdate = true; } } finally { swapping = false; } }
 async function switchTo(tr) { if (swapping || tr === active) return; swapping = true; const p = pos();
-  await tr.seek(tr === fwdT ? p : D - p); tr.el.playbackRate = Math.max(0.0625, Math.abs(rate)); await playSafe(tr.el); if (tr.el.readyState >= 2) { mat.map = tr.tex[tr.k]; mat.needsUpdate = true; }
+  await tr.seek(tr === fwdT ? p : D - p); tr.el.playbackRate = Math.max(isIOS ? 0.5 : 0.0625, Math.abs(rate)); await playSafe(tr.el); if (tr.el.readyState >= 2) { mat.map = tr.tex[tr.k]; mat.needsUpdate = true; }
   active.pauseAll(); active = tr; swapping = false; }
 
 // input
 const view = { face: 1, turn: 0, yaw: 0, pitch: 0, sy: 0, sp: 0, gyro: null, gyroYaw0: 0, lat: 0, latT: 0 };
+// nadir cap (w1): the source's camera-carrier/stitch area under the lens warps and flows like water while walking; cover it with a stable, soft ground-toned disc that fades out by ~48 deg below the horizon
+const PITCH_MIN = 0.75;
+const nadir = (() => { if (params.get('nadir') === '0') return null;
+  const m = new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, uniforms: { col: { value: new THREE.Color(0.32, 0.30, 0.29) } },
+    vertexShader: 'varying vec3 vp; void main(){ vp = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 col; varying vec3 vp; float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5); } void main(){ float r = length(vp.xz); float dep = atan(1.6, r); float a = smoothstep(0.84, 1.08, dep); float g = 0.94 + 0.06 * h(floor(vp.xz * 90.0)); gl_FragColor = vec4(col * g * (0.9 + 0.1 * smoothstep(0.0, 1.4, r)), a); \n#include <colorspace_fragment>\n}' });
+  const g = new THREE.CircleGeometry(1.6, 64); g.rotateX(-Math.PI / 2); const mesh = new THREE.Mesh(g, m); mesh.position.y = -1.6; mesh.renderOrder = 10; scene.add(mesh);
+  const c = document.createElement('canvas'); c.width = 16; c.height = 8; const cx = c.getContext('2d', { willReadFrequently: true }); const tgt = new THREE.Color(0.32, 0.30, 0.29);
+  return { mesh, m, c, cx, tgt, last: 0 }; })();
+function nadirUpd(now) { if (!nadir) return; nadir.mesh.position.x = camera.position.x; nadir.mesh.position.z = camera.position.z;
+  if (now - nadir.last > 700) { nadir.last = now; const im = mat.map && mat.map.image; try { if (im && (im.videoWidth || im.width)) { nadir.cx.drawImage(im, 0, 0, 16, 8); const d = nadir.cx.getImageData(0, 6, 16, 1).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < 64; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } nadir.tgt.setRGB(r / 4080, gg / 4080, b / 4080, THREE.SRGBColorSpace); } } catch (_) {} }
+  nadir.m.uniforms.col.value.lerp(nadir.tgt, 0.03); }
 let drag = null; const cv = renderer.domElement;
 cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; cv.setPointerCapture(e.pointerId); });
-cv.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const k = camera.fov / innerHeight * Math.PI / 180; view.yaw += (e.clientX - drag.x) * k; view.pitch = THREE.MathUtils.clamp(view.pitch + (e.clientY - drag.y) * k, -0.9, 1.3); drag.x = e.clientX; drag.y = e.clientY; });
+cv.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; const k = camera.fov / innerHeight * Math.PI / 180; view.yaw += (e.clientX - drag.x) * k; view.pitch = THREE.MathUtils.clamp(view.pitch + (e.clientY - drag.y) * k, -PITCH_MIN, 1.3); drag.x = e.clientX; drag.y = e.clientY; });
 cv.addEventListener('pointerup', () => drag = null);
 const keys = {}; addEventListener('keydown', e => keys[e.code] = true); addEventListener('keyup', e => keys[e.code] = false);
-const joyEl = $('joy'), knob = $('knob'); let joy = { x: 0, y: 0, id: null };
-joyEl.addEventListener('pointerdown', e => { joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); knob.style.transition = 'none'; e.stopPropagation(); });
+const joyEl = $('joy'), knob = $('knob'); let joy = { x: 0, y: 0, id: null }; const evc = { down: 0, move: 0, up: 0, cancel: 0, ts: 0 };
+for (const [k, n] of [['down', 'pointerdown'], ['move', 'pointermove'], ['up', 'pointerup'], ['cancel', 'pointercancel'], ['ts', 'touchstart']]) joyEl.addEventListener(n, () => evc[k]++, { passive: true });
+joyEl.addEventListener('touchstart', e => e.preventDefault(), { passive: false }); joyEl.addEventListener('touchmove', e => e.preventDefault(), { passive: false }); // iOS: never let the page pan/scroll steal the stick
+joyEl.addEventListener('pointerdown', e => { joy.id = e.pointerId; try { joyEl.setPointerCapture(e.pointerId); } catch (_) {} knob.style.transition = 'none'; e.stopPropagation(); });
 joyEl.addEventListener('pointermove', e => { if (e.pointerId !== joy.id) return; const r = joyEl.getBoundingClientRect(); const dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2, L = Math.hypot(dx, dy) || 1, m = Math.min(1, L / 50) / L; joy.x = dx * m; joy.y = dy * m; knob.style.transform = `translate(${joy.x * 35}px,${joy.y * 35}px)`; });
 const joyEnd = e => { if (e.pointerId === joy.id) { joy = { x: 0, y: 0, id: null }; knob.style.transition = ''; knob.style.transform = ''; } }; joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
 function enableGyro() { const on = () => addEventListener('deviceorientation', ev => { if (ev.alpha == null) return; const d = THREE.MathUtils.degToRad, o = d(screen.orientation?.angle || window.orientation || 0);
@@ -95,8 +110,8 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     const probe = document.createElement('video'), ua = navigator.userAgent, isSafari = /Safari/.test(ua) && !/Chrome|CriOS|Chromium|Android|FxiOS/.test(ua);
     const hevcOK = isSafari && probe.canPlayType('video/mp4; codecs="hvc1.1.6.L153.B0"') !== '';
     const c = navigator.connection || {}, weak = c.saveData || (c.downlink && c.downlink < 2.5) || (navigator.deviceMemory && navigator.deviceMemory <= 2);
-    quality = params.get('q') || (weak ? '2k5' : '4k'); if (!j.tracks[quality]) quality = '4k'; const F = j.tracks[quality];
-    const urls = (t) => Array.from({ length: t.n }, (_, i) => BASE + t.pattern.replace('%02d', String(i).padStart(2, '0')));
+    quality = params.get('q') || (weak ? (j.tracks['2k5'] ? '2k5' : 'f2k') : '4k'); if (!j.tracks[quality]) quality = '4k'; window.__walkJ = j; const F = j.tracks[quality];
+    const urls = (t) => t.files ? t.files.map(f => BASE + f) : Array.from({ length: t.n }, (_, i) => BASE + t.pattern.replace('%02d', String(i).padStart(2, '0'))); window.__urls = urls;
     fwdT = new Track(urls(F), j.chunk, D); revT = new Track(urls(j.tracks.rev), j.chunk, D); active = fwdT;
     $('badge').innerHTML = `<b>Hội An</b> · real 360° street walk · <a href="CREDITS.md" target="_blank">Credits</a>`; setTimeout(() => $('badge').classList.add('fade'), 100);
     $('streetbar').hidden = false; $('slabel').textContent = j.name;
@@ -111,7 +126,7 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     audio.src = BASE + j.audio;
     const prog = setInterval(() => { try { const v = fwdT.el, b = v.buffered.length ? v.buffered.end(0) - v.currentTime : 0; $('fill').style.width = Math.min(100, 15 + b / 2 * 85) + '%'; } catch (e) {} }, 200);
     $('loadmsg').textContent = 'Loading the street in ' + (quality === '2k5' ? '2.5K' : '4K') + '…';
-    await fwdT.seek(Math.max(LO, +(params.get('t') || 0))); fwdT.el.playbackRate = Math.max(0.0625, IDLE);
+    await fwdT.seek(Math.max(LO, +(params.get('t') || 0))); fwdT.el.playbackRate = isIOS ? 1 : Math.max(0.0625, IDLE);
     if (fwdT.el.error) throw new Error('video failed to load (' + (fwdT.el.error.code) + ')');
     clearInterval(prog); $('loader').hidden = true; document.body.classList.remove('loading'); $('hint').classList.add('fade'); window.__state.loaded = true; setSpin(true);
     if (!(await playSafe(fwdT.el))) showTap();
@@ -123,13 +138,23 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
     if (!isMobile) setTimeout(() => revT.seek(D - pos()).catch(() => {}), 3000);
   } catch (e) { showError('The walk could not start: ' + e.message + '\nPlease reload. (Older version: ?scene=spots)'); return; }
   let last = performance.now();
+  // forward-stall fallback: if you push to walk and the 4K forward footage doesn't advance within 1.5 s, reload at 2048 px
+  const stall = { pushT: 0, n: 0, note: '' };
+  async function degrade(why) { const j = window.__walkJ; if (quality !== '4k' || !j.tracks.f2k || swapping) return; swapping = true; const p = pos(); stall.note = 'fallback→2K (' + why + ')';
+    try { const old = fwdT; fwdT = new Track(window.__urls(j.tracks.f2k), j.chunk, D); quality = 'f2k'; await fwdT.seek(p); fwdT.el.playbackRate = 1; if (active === old) { active = fwdT; await playSafe(fwdT.el); if (fwdT.el.readyState >= 2) { mat.map = fwdT.tex[fwdT.k]; mat.needsUpdate = true; } } old.pauseAll(); old.els.forEach(v => { v.removeAttribute('src'); v.load(); }); lastAdv = performance.now(); }
+    catch (e) { stall.note += ' failed ' + e; } finally { swapping = false; } }
+  const dbgEl = params.get('debug') === '1' ? Object.assign(document.createElement('pre'), { id: 'walkdbg' }) : null; let dbgT = 0;
+  if (dbgEl) { dbgEl.style.cssText = 'position:fixed;left:6px;right:6px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:98;margin:0;padding:8px 10px;background:rgba(0,0,0,.72);color:#ff9;font:600 15px/1.4 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre-wrap;border-radius:8px'; document.body.appendChild(dbgEl); }
   renderer.setAnimationLoop(() => { const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; aTick(dt); crowd?.update(dt); gen?.update(dt);
+    { const pushing = Math.abs(target) > 0.3; if (pushing && !stall.pushT) stall.pushT = now; if (!pushing) stall.pushT = 0;
+      if (pushing && active === fwdT && !swapping && now - stall.pushT > 1500 && now - lastAdv > 1500) { stall.n++; degrade('no frames ' + ((now - lastAdv) / 1000).toFixed(1) + 's'); stall.pushT = now; } }
+    if (dbgEl && (dbgT += dt) > 0.25) { dbgT = 0; const v = active?.el; dbgEl.textContent = `walk ${quality} ${active === fwdT ? 'FWD' : 'REV'} chunk ${active?.ci} pos ${pos().toFixed(2)} [${LO}-${HI}]\nvideo ${v ? 'rs' + v.readyState + (v.paused ? ' PAUSED' : ' playing') + ' ct ' + v.currentTime.toFixed(2) + ' pr ' + v.playbackRate.toFixed(2) + ' ' + v.videoWidth + 'px' : '-'}\nstanding ${!!view.standing} target ${target.toFixed(2)} rate ${rate.toFixed(2)} swap ${swapping}\njoy ${joy.x.toFixed(2)},${joy.y.toFixed(2)} id ${joy.id} ev ${evc.down}/${evc.move}/${evc.up}/${evc.cancel} touch ${evc.ts}\nlast frame ${((now - lastAdv) / 1000).toFixed(1)}s ago ${stall.note}`; }
     let t = btnTarget === 'walk' ? WALK : null; const kf = keys.KeyW || keys.ArrowUp, jog = keys.ShiftLeft || keys.ShiftRight;
     if (joy.y > 0.75 && !view.joyTurned) { view.joyTurned = true; turnAround(); } else if (joy.y < 0.4) view.joyTurned = false;
     if (t == null) { if (kf) t = jog ? JOG : WALK; else if (joy.y < -0.15) { const m = (-joy.y - 0.15) / 0.85; t = m < 0.88 ? IDLE + (WALK - IDLE) * Math.pow(m / 0.88, 1.4) /* gentle start, full walk well before the rim */ : JOG; } }
     t = t == null ? IDLE : t * view.face; if (Math.abs(t) <= IDLE + 1e-6) t = IDLE; view.standing = IDLE === 0 && Math.abs(t) < 0.01 && Math.abs(rate) < 0.15; // standing: natural-looking forward footage at a slow drift
     target = t; rate += (target - rate) * Math.min(1, dt * 2.5);
-    view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.3 ? joy.x : 0); view.lat += (view.latT * 0.6 - view.lat) * Math.min(1, dt * 3);
+    view.latT = (keys.KeyA ? -1 : keys.KeyD ? 1 : 0) + (Math.abs(joy.x) > 0.55 ? (joy.x - Math.sign(joy.x) * 0.55) / 0.45 : 0); view.lat += (view.latT * 0.25 - view.lat) * Math.min(1, dt * 3);
     if (window.__state.loaded && !swapping) {
       const idle = Math.abs(target) < 0.5;
       // direction: walking back uses the reversed track; idle keeps the current track (and ping-pongs at the ends)
@@ -138,11 +163,13 @@ addEventListener('keydown', e => { if ((e.code === 'KeyS' || e.code === 'ArrowDo
       else if (active === fwdT && pos() >= HI - 0.05) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
       else if (active === revT && pos() <= LO + 0.1) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
       else if (view.standing) { if (!active.el.paused) active.el.pause(); edgeStatus(); }
-      else { const v = active.el; if (v.paused && !active.atEnd() && !swapping && !v._pp) { v._pp = 1; playSafe(v).finally(() => { v._pp = 0; }); } const pr = Math.max(0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
+      else { const v = active.el; if (v.paused && !active.atEnd() && !swapping && !v._pp) { v._pp = 1; playSafe(v).finally(() => { v._pp = 0; }); } const pr = Math.max(isIOS ? 0.5 : 0.0625, Math.min(3, Math.abs(Math.abs(rate - target) < 0.1 ? target : rate))); if (Math.abs(v.playbackRate - pr) > 0.1 || (pr === Math.abs(target) && v.playbackRate !== pr)) v.playbackRate = pr; /* few rate changes: each one can cost a pipeline flush on some engines */ active.tick(pr);
         edgeStatus(); }
     }
     view.sy += (view.yaw - view.sy) * 0.18; view.sp += (view.pitch - view.sp) * 0.18; { const tt = view.face > 0 ? 0 : Math.PI - TURN_OFF(); view.turn += (tt - view.turn) * Math.min(1, dt * 2.2); } camera.quaternion.setFromEuler(new THREE.Euler(view.sp + 0.15 * view.turn / Math.PI /* facing back: lift gaze a little so the camera carrier sits below frame */, view.sy + view.turn, 0, 'YXZ'));
     if (view.gyro) camera.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), view.gyroYaw0)).multiply(view.gyro);
+    { const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); if (eu.x < -PITCH_MIN) { eu.x = -PITCH_MIN; camera.quaternion.setFromEuler(eu); } } // clamp final pitch (gyro included) so the stitched nadir never fills the screen
+    nadirUpd(now);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize(); camera.position.copy(right.multiplyScalar(view.lat));
     const edge = pos() >= HI - 0.5 || pos() <= LO + 0.5, adv = now - lastAdv < 1500 || edge; $('live').textContent = adv ? (Math.abs(rate) > 0.5 && !edge ? (rate > 0 ? '● walking' : '● walking · turned around') : '● LIVE') + (soundOn ? '' : ' · tap for sound') : '○ loading';
     $('live').className = adv ? 'on' : ''; if (D) $('sfill').style.width = Math.max(0, (pos() - LO) / (HI - LO) * 100) + '%';
@@ -154,4 +181,4 @@ function showTap() { const t = $('tapstart'); t.textContent = '🔊 Tap to start
 /* Public hooks for custom UI (buttons etc.). Example: HoianWalk.setWalk(true) while a button is held.
    setWalk(on|null): walk forward like the stick; turnAround(); faceAhead(); state() -> { pos, lo, hi, facing, standing, sound } */
 window.HoianWalk = { setWalk: on => { btnTarget = on ? 'walk' : null; }, turnAround: () => turnAround(), faceAhead: () => { view.yaw = 0; view.pitch = 0; }, state: () => ({ pos: pos(), lo: LO, hi: HI, facing: view.face > 0 ? 'forward' : 'back', standing: !!view.standing, sound: soundOn, rate, joy: joy.y, swapping, base: active ? (active === fwdT ? 'fwd' : 'rev') + ' rs' + active.el.readyState + (active.el.paused ? 'P' : '>') : '-' }) };
-window.__test = { aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };
+window.__test = { nadir: () => nadir && nadir.m.uniforms.col.value.getHexString(), aud: () => ({ t: +audio.currentTime.toFixed(1), want: +aWant().toFixed(1), g: +aud.g.toFixed(2), paused: audio.paused, webaudio: !!aud.node, ctx: aud.ctx?.state }), turn: () => turnAround(), view: () => ({ face: view.face, turn: +view.turn.toFixed(2) }), setYaw: y => view.yaw = y, setPitch: p => view.pitch = p, key: (c, d) => keys[c] = d, els: () => [fwdT, revT].flatMap(t => t.els.map((v, j) => ({ t: t === fwdT ? "f" : "r", j, act: j === t.k, src: v.src.split("/").pop(), p: v.paused, rs: v.readyState, ct: +v.currentTime.toFixed(2), pr: v.playbackRate, buf: v.buffered.length ? +v.buffered.end(v.buffered.length - 1).toFixed(1) : 0 }))), state: () => ({ pos: pos(), D, rate, target, dir: active === fwdT ? 'fwd' : 'rev', chunk: active?.ci, frames, chunkSwaps, paused: active?.el.paused, w: active?.el.videoWidth, q: quality, swapping, err: window.__viewerError || null }) };

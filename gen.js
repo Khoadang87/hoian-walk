@@ -28,7 +28,7 @@ export async function initGen(THREE, o) {
     busy = false;
   }
   const dEl = new URLSearchParams(location.search).get('debug') === '1' ? Object.assign(document.createElement('pre'), { id: 'gendbg' }) : null;
-  if (dEl) { dEl.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:6px 8px;background:rgba(0,0,0,.65);color:#9f9;font:11px/1.35 monospace;pointer-events:none;white-space:pre'; document.body.appendChild(dEl); }
+  if (dEl) { dEl.style.cssText = 'position:fixed;left:6px;right:6px;top:calc(env(safe-area-inset-top,0px) + 150px);z-index:99;margin:0;padding:8px 10px;background:rgba(0,0,0,.72);color:#9f9;font:600 14px/1.4 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre-wrap;border-radius:8px'; document.body.appendChild(dEl); }
   let dT = 0;
   return {
     update(dt) {
